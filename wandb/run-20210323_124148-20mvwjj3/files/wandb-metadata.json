@@ -1,0 +1,24 @@
+{
+    "os": "Linux-5.8.0-45-generic-x86_64-with-glibc2.10",
+    "python": "3.8.8",
+    "heartbeatAt": "2021-03-23T16:41:53.586092",
+    "startedAt": "2021-03-23T16:41:48.089940",
+    "docker": null,
+    "gpu": "GeForce RTX 2060 SUPER",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "git@github.gatech.edu:jcoholich3/aliengo_baseline.git",
+        "commit": "61d74055ac11cd8aaa390f77ab086f69c57dd532"
+    },
+    "email": "jcoholich@gatech.edu",
+    "root": "/home/jeremiah/aliengo_baseline",
+    "host": "jeremiah-desktop",
+    "username": "jeremiah",
+    "executable": "/home/jeremiah/anaconda3/envs/aliengo_baseline/bin/python"
+}
