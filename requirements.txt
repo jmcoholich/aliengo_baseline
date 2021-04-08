@@ -4,5 +4,5 @@ pybullet
 stable-baselines3
 h5py
 pyyaml
-torch==1.7
+opencv-python
 wandb

@@ -1,0 +1,1 @@
+#TODO make this script to run a trained env using the params from its yaml file

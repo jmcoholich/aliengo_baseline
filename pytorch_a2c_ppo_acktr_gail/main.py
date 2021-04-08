@@ -38,11 +38,10 @@ class WandbLogWrapper:
         self.counter += 1
         if not self.mean_info: # if dict is empty, init
             self.mean_info = info
-            return
-
-        for key, value in info.items():
-            if not (isinstance(value, str) or isinstance(value, bool)):
-                self.mean_info[key] += (value - self.mean_info[key])/float(self.counter)
+        else: # otherwise, update values (online mean algorithm)
+            for key, value in info.items():
+                if not (isinstance(value, str) or isinstance(value, bool)):
+                    self.mean_info[key] += (value - self.mean_info[key])/float(self.counter)
 
         if self.counter == self.log_interval:
             self.wandb.log(self.mean_info)
@@ -50,7 +49,7 @@ class WandbLogWrapper:
 
 
 def main(args):
-    # args = get_args()
+    total_env_steps = 0
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
 
@@ -71,7 +70,10 @@ def main(args):
     device = torch.device("cuda:" + str(args.gpu_idx) if args.cuda else "cpu")
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes, # TODO change the way I make envs
-                         args.gamma, args.log_dir, device, False)
+                         args.gamma, args.log_dir, device, False, env_params=args.env_params)
+
+    action_ub = torch.from_numpy(envs.action_space.high).to(device)
+    action_lb = torch.from_numpy(envs.action_space.low).to(device)
 
     actor_critic = Policy(
         envs.observation_space.shape,
@@ -125,6 +127,9 @@ def main(args):
                               envs.observation_space.shape, envs.action_space,
                               actor_critic.recurrent_hidden_state_size)
 
+    mean_entropies = 0.0
+    entropies_counter = 0.0
+
     obs = envs.reset()
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
@@ -145,9 +150,13 @@ def main(args):
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, dist_entropy = actor_critic.act(
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step])
+                    rollouts.masks[step]) #TODO return dist_entropy
+
+            entropies_counter += 1.0
+            mean_entropies += (dist_entropy.item() - mean_entropies)/entropies_counter
+
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -155,6 +164,23 @@ def main(args):
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
+                    wandb_info = {}
+                    total_env_steps += info['episode']['l'] 
+                    wandb_info['hours_wall_time'] = info['episode']['t']/3600.
+                    wandb_info['episode_length']  = info['episode']['l'] 
+                    wandb_info['episode_reward']  = info['episode']['r']
+                    wandb_info['num_env_samples'] = total_env_steps 
+                    wandb_info['average_entropy']  = mean_entropies
+                    # these keys are already taken case of elsewhere 
+                    # TODO eventually log a moving average of percentage/frequency of different termination conditions
+                    blacklisted_keys = {'episode', 'bad_transition', 'termination_reason'} # don't log these
+                    for key_of_logged_item, value_of_logged_item in info.items():
+                        if key_of_logged_item not in blacklisted_keys:
+                            wandb_info[key_of_logged_item] = value_of_logged_item
+                    entropies_counter = 0.0 
+                    wandb_wrapper.log(wandb_info)
+
+
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor(

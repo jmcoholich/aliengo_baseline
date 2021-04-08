@@ -1,0 +1,1 @@
+{"hours_wall_time": 0.05064299490277778, "episode_length": 200.0, "episode_reward": -874.1896203599999, "num_env_samples": 810100.0, "average_entropy": 1.2245436191558832, "TimeLimit.truncated": true, "terminal_observation": [0.5907700657844543, 0.02057028003036976, -0.1214933693408966], "_runtime": 188, "_timestamp": 1617823880, "_step": 40}

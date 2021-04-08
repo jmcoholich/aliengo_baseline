@@ -16,6 +16,8 @@ from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
 from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
+from aliengo_env.env import AliengoEnv
+
 try:
     import dmc2gym
 except ImportError:
@@ -32,9 +34,12 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, env_params):
     def _thunk():
-        if env_id.startswith("dm"):
+        if env_id == "aliengo":  #TODO then have a separate env constructor for this
+            env = AliengoEnv(**env_params)
+            env = ClipAction(env)
+        elif env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dmc2gym.make(domain_name=domain, task_name=task)
             env = ClipAction(env)
@@ -87,9 +92,10 @@ def make_vec_envs(env_name,
                   log_dir,
                   device,
                   allow_early_resets,
-                  num_frame_stack=None):
+                  num_frame_stack=None,
+                  env_params=None):
     envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets)
+        make_env(env_name, seed, i, log_dir, allow_early_resets, env_params=env_params)
         for i in range(num_processes)
     ]
 
