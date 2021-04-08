@@ -27,6 +27,7 @@ class WandbLogWrapper:
     This is to save disk space in the wandb dir and speed up the loading of wandb pages. 
     NOTE: This does not handle the logging of strings like termination reason, etc.
     """
+
     def __init__(self, wandb, log_interval=100):
         self.wandb = wandb
         self.counter = 0
@@ -48,7 +49,9 @@ class WandbLogWrapper:
             self.counter = 0
 
 
-def main(args):
+def main(args, config_yaml_file):
+    """Takes the stem of the config yaml file name (ie file name without .yaml). """
+
     total_env_steps = 0
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
@@ -69,7 +72,7 @@ def main(args):
         torch.set_num_threads(args.num_torch_threads) # TODO is there any reason to set this to one? 
     device = torch.device("cuda:" + str(args.gpu_idx) if args.cuda else "cpu")
 
-    envs = make_vec_envs(args.env_name, args.seed, args.num_processes, # TODO change the way I make envs
+    envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False, env_params=args.env_params)
 
     action_ub = torch.from_numpy(envs.action_space.high).to(device)
@@ -220,18 +223,18 @@ def main(args):
         rollouts.after_update()
 
         # save for every interval-th episode or for the last epoch
+        save_dir = "./trained_models"
         if (j % args.save_interval == 0
-                or j == num_updates - 1) and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
+                or j == num_updates - 1):
             try:
-                os.makedirs(save_path)
+                os.makedirs(save_dir)
             except OSError:
                 pass
 
             torch.save([
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
-            ], os.path.join(save_path, args.env_name + ".pt"))
+            ], os.path.join(save_dir, config_yaml_file + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             total_num_steps = (j + 1) * args.num_processes * args.num_steps

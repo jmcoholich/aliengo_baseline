@@ -34,7 +34,7 @@ num_env_steps: 100_000_000
 env_name: aliengo
 wandb_log_interval: 1 #TODO
 log_dir: /tmp/gym/
-save_dir: ./trained_models/
+# save_dir: ./trained_models/
 cuda: True # changed from no_cuda to simplify
 use_proper_time_limits: True
 recurrent_policy: False

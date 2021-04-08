@@ -5,6 +5,12 @@ import numpy as np
 
 from collections import OrderedDict
 
+"""
+Contains the classes for observations and actions that allow the construction of different combinations of 
+observation and action spaces, as specified in the yaml file. 
+"""
+
+
 class Observation():
     def __init__(self, parts, quadruped):
         """Takes a list of things to include in the observation and a AliengoQuadruped object. 
