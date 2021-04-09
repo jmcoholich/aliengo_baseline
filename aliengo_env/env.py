@@ -13,7 +13,10 @@ from pybullet_utils import bullet_client as bc
 
 
 from .modular_obs_and_act import Observation, Action
-from .obstacles import Hills, Steps, Stairs, SteppingStones
+from .obstacles.hills import Hills
+from .obstacles.steps import Steps  
+from .obstacles.stepping_stones import SteppingStones
+from .obstacles.stairs import Stairs
 
 class AliengoEnv(gym.Env):
     def __init__(self, 
@@ -215,7 +218,7 @@ class AliengoEnv(gym.Env):
 
         self.eps_step_counter = 0
         self.t = 0.0
-        self.obstacles.reset()
+        ground_height = self.obstacles.reset()
         # TODO fix the sphaghetti below. Implement fixed quadruped for debugging purposes (doesn't need to be fed in from yaml)
         # if 'fixed' in self.quadruped_kwargs: # if I previous said the quadruped should be fixed, don't move it
         #     if self.quadruped_kwargs['fixed'] and 'fixed_position' in self.quadruped_kwargs:
@@ -225,7 +228,7 @@ class AliengoEnv(gym.Env):
         # else: 
         #     posObj = [0,0,base_height]
         self.client.resetBasePositionAndOrientation(self.quadruped.quadruped,
-                                            posObj=[0,0,base_height], 
+                                            posObj=[0,0,base_height + ground_height], 
                                             ornObj=[0,0,0,1.0]) 
 
         self.quadruped.reset_joint_positions(stochastic=stochastic) 

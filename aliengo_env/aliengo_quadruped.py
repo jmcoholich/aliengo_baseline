@@ -21,7 +21,7 @@ class AliengoQuadruped:
                     fixed_orientation=[0,0,0], 
                     vis=False,
                     gait_type='trot'):
-        print('fixed_position received in Aliengo constructor', fixed_position)
+        # print('fixed_position received in Aliengo constructor', fixed_position)
         if gait_type not in ['trot', 'walk']:
             raise ValueError('Current gait must be of type "walk" or "trot".')
         self.max_torque = max_torque

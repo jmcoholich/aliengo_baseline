@@ -2,28 +2,6 @@ import numpy as np
 from noise import pnoise2
 import pybullet as p
 
-# class Obstacles():
-#     """Shouldn't be a parent class"""    
-#     def __init__(self, obstacle_type, pybullet_client, fake_client): #TODO make sure I have a fake client whenver.
-#         self.reset()
-
-
-#     def reset(self): 
-#         """Randomly generates a new set of obstacles or something."""
-
-
-class Steps():
-    def __init__(self):
-        pass
-
-
-class Stairs():
-    def __init__(self):
-        pass
-
-class SteppingStones():
-    def __init__(self):
-        pass
 
 class Hills():
     def __init__(self,
@@ -63,19 +41,6 @@ class Hills():
 
         self.create_initial_mesh()
 
-        
-        # to not do a hard reset, but hard reset is necessary in the constructor 
-
-    # def reset(self, hard_reset=False):
-    #     if hard_reset:
-    #         self._hard_reset() # resets the simulation and reloads the plane
-    #         self._create_hills(update=False)
-    #         self.quadruped = self.init_quadruped()
-    #     else: 
-    #         self._create_hills(update=True)
-
-    #     return super().reset() # resets quadruped position (and a few other vars), updates state, returns observation
-    
 
     def create_initial_mesh(self):
         vertices = self.generate_vertices()
@@ -103,7 +68,6 @@ class Hills():
         self.fake_client.createMultiBody(baseCollisionShapeIndex=self.fake_terrain, baseOrientation=ori, basePosition=pos)
 
 
-
     def reset(self):
         '''Creates an identical hills mesh using Perlin noise. Added to client and fake client'''
         
@@ -126,7 +90,6 @@ class Hills():
                                                     numHeightfieldRows=self.mesh_width + 1,
                                                     numHeightfieldColumns=self.mesh_length + 1,
                                                     replaceHeightfieldIndex=self.fake_terrain)
-
 
 
     def generate_vertices(self):
@@ -173,19 +136,4 @@ class Hills():
     #         termination_dict['termination_reason'] = 'y_out_of_bounds'
     #     done = quadruped_done or timeout or y_out_of_bounds
     #     return done, termination_dict
-
-
-if __name__ == '__main__':
-    '''This test open the simulation in GUI mode for viewing the generated terrain, then saves a rendered image of each
-    client for visual verification that the two are identical. Then the script just keeps generating random terrains 
-    for viewing. '''
-
-    env = gym.make('gym_aliengo:AliengoHills-v0', render=True, realTime=True)
-    imwrite('client_render.png', cvtColor(env.render(client=env.client, mode='rgb_array'), COLOR_RGB2BGR))
-    imwrite('fake_client_render.png', cvtColor(env.render(client=env.fake_client, mode='rgb_array'), COLOR_RGB2BGR))
-
-    while True:
-        env.reset(hard_reset=False)
-        time.sleep(1.0)
-
 

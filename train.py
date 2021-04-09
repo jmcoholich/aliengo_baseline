@@ -31,7 +31,7 @@ def get_params(config_yaml_path):
 
 
 
-def main():
+def main(): #TODO add a vis flag for training. (just to make sure the env is created correctly and whatnot)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", 
                         help="specify name of yaml config file. If none is given, use default.yaml",

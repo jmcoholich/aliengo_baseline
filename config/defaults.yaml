@@ -21,9 +21,9 @@ max_grad_norm: 0.5
 seed: 1
 cuda_deterministic: False
 num_processes: 1 #TODO
-num_steps: 600
+num_steps: 10 #TODO 600
 ppo_epoch: 10
-num_mini_batch: 32
+num_mini_batch: 10 # TODO 32
 clip_param: 0.2
 log_interval: 1 #TODO
 save_interval: 100
@@ -41,7 +41,7 @@ num_torch_threads: null # null just means don't set anything.
 
 
 env_params:
-  obstacles: hills
+  obstacles: stepping_stones
   render: False #TODO
   # env_mode: pmtg
   apply_perturb: False
