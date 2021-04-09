@@ -3,8 +3,6 @@ wandb_project: default
 gait_type: trot
 gpu_idx: 0
 
-
-
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
 gail: False # do imitation learning with  gail
@@ -43,6 +41,7 @@ num_torch_threads: null # null just means don't set anything.
 
 
 env_params:
+  obstacles: hills
   render: False #TODO
   # env_mode: pmtg
   apply_perturb: False
@@ -76,3 +75,7 @@ env_params:
     joint_positions:
       lb: null
       ub: null
+  
+  # reward_parts: #TODO
+  #   # reward_type: coefficient
+  #   forward_velocity: asdf

@@ -13,6 +13,7 @@ from pybullet_utils import bullet_client as bc
 
 
 from .modular_obs_and_act import Observation, Action
+from .obstacles import Hills, Steps, Stairs, SteppingStones
 
 class AliengoEnv(gym.Env):
     def __init__(self, 
@@ -27,13 +28,12 @@ class AliengoEnv(gym.Env):
                     vis=False,
                     observation_parts=['joint_torques', 'joint_positions', 'joint_velocities', 'IMU'],
                     action_parts=['joint_positions'],
+                    obstacles=None,
                     **quadruped_kwargs):
                     # fixed=False,
                     # fixed_position=[0,0,1.0], 
                     # fixed_orientation=[0,0,0],
                     # gait_type='trot'):
-        # Environment Options
-        # self.env_mode = env_mode
         self.apply_perturb = apply_perturb
         self.avg_time_per_perturb = avg_time_per_perturb # average time in seconds between perturbations 
         self.n_hold_frames = action_repeat
@@ -46,16 +46,18 @@ class AliengoEnv(gym.Env):
         # setting these to class variables so that child classes can use it as such. 
         self.realTime = realTime 
         self.vis = vis
+
         if render:
             self.client = bc.BulletClient(connection_mode=p.GUI)
         else:
             self.client = bc.BulletClient(connection_mode=p.DIRECT)
-
-        if self.client == -1: # not 100% sure that BulletClient class works like this, but will leave this here for now
+        self.fake_client = bc.BulletClient(connection_mode=p.DIRECT) 
+        if self.client == -1 or self.fake_client == -1: 
+            # not sure that BulletClient would return -1 for failure, but leaving this for now
             raise RuntimeError('Pybullet could not connect to physics client')
+
         self.plane = self.client.loadURDF(str(os.path.dirname(__file__)) +  '/urdf/plane.urdf')
         self.quadruped = self.init_quadruped()
-        self.fake_client = None
         self.client.setGravity(0,0,-9.8)
         if self.realTime:
             warnings.warn('\n\n' + '#'*100 + '\nExternal force/torque disturbances will NOT work properly with '
@@ -99,6 +101,12 @@ class AliengoEnv(gym.Env):
             high=self.observe.observation_ub,
             dtype=np.float32
             )
+
+
+        obstacles_dict = {'hills': Hills, 'steps': Steps, 'stairs': Stairs, 'stepping_stones': SteppingStones}
+        if obstacles is not None:
+            self.obstacles = obstacles_dict[obstacles](self.client, self.fake_client)
+            
 
 
     def init_quadruped(self):
@@ -200,18 +208,24 @@ class AliengoEnv(gym.Env):
 
     def reset(self, base_height=0.48, stochastic=True): #TODO make it so that I apply the torque at every simulation step
         '''Resets the robot to a neutral standing position, knees slightly bent. The motor control command is to 
-        prevent the robot from jumping/falling on first user command. '''
+        prevent the robot from jumping/falling on first user command. 
+        
+        Create new random terrain.
+        '''
 
         self.eps_step_counter = 0
-        if 'fixed' in self.quadruped_kwargs: # if I previous said the quadruped should be fixed, don't move it
-            if self.quadruped_kwargs['fixed'] and 'fixed_position' in self.quadruped_kwargs:
-                posObj = self.quadruped_kwargs['fixed_position']
-            else:
-                posObj = [0,0,base_height]
-        else: 
-            posObj = [0,0,base_height]
+        self.t = 0.0
+        self.obstacles.reset()
+        # TODO fix the sphaghetti below. Implement fixed quadruped for debugging purposes (doesn't need to be fed in from yaml)
+        # if 'fixed' in self.quadruped_kwargs: # if I previous said the quadruped should be fixed, don't move it
+        #     if self.quadruped_kwargs['fixed'] and 'fixed_position' in self.quadruped_kwargs:
+        #         posObj = self.quadruped_kwargs['fixed_position']
+        #     else:
+        #         posObj = [0,0,base_height]
+        # else: 
+        #     posObj = [0,0,base_height]
         self.client.resetBasePositionAndOrientation(self.quadruped.quadruped,
-                                            posObj=posObj, 
+                                            posObj=[0,0,base_height], 
                                             ornObj=[0,0,0,1.0]) 
 
         self.quadruped.reset_joint_positions(stochastic=stochastic) 
@@ -230,7 +244,6 @@ class AliengoEnv(gym.Env):
         # elif self.env_mode == 'flat':
         #     obs = self.quadruped.get_observation()
         # else: assert False
-        self.t = 0.0
         obs = self.observe()
 
         return obs

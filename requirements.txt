@@ -6,3 +6,4 @@ h5py
 pyyaml
 opencv-python
 wandb
+noise
