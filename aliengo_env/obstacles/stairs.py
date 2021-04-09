@@ -60,10 +60,10 @@ class Stairs():
         self.max_steps = int(self.stairs_length/(self.step_length - self.step_length_range/2.0)) + 1 # get ceiling
         self.ids = [-1] * self.max_steps
         self.fake_ids = [-1] * self.max_steps
+
         for i in range(self.max_steps):
             self.ids[i] = self.client.createMultiBody(baseCollisionShapeIndex=_id)
             self.fake_ids[i] = self.fake_client.createMultiBody(baseCollisionShapeIndex=fake_id)
-
 
 
 

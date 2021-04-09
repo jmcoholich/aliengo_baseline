@@ -41,7 +41,7 @@ num_torch_threads: null # null just means don't set anything.
 
 
 env_params:
-  obstacles: stairs
+  obstacles: steps
   render: False #TODO
   # env_mode: pmtg
   apply_perturb: False
