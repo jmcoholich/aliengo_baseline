@@ -227,8 +227,9 @@ class AliengoEnv(gym.Env):
         #         posObj = [0,0,base_height]
         # else: 
         #     posObj = [0,0,base_height]
+        posObj = [0,0,base_height + ground_height] if ground_height is not None else [0,0,base_height]
         self.client.resetBasePositionAndOrientation(self.quadruped.quadruped,
-                                            posObj=[0,0,base_height + ground_height], 
+                                            posObj=posObj, 
                                             ornObj=[0,0,0,1.0]) 
 
         self.quadruped.reset_joint_positions(stochastic=stochastic) 
