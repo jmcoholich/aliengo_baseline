@@ -560,18 +560,18 @@ class AliengoQuadruped:
         return obs
 
 
-    def reward(self):
-        # for regular flat implementation
+    # def reward(self): #TODO
+    #     # for regular flat implementation
 
-        vel_cap = 0.5
+    #     vel_cap = 0.5
 
-        fwd_rew = np.clip(self.base_vel[0], -vel_cap, vel_cap)
-        torque_rew = -np.linalg.norm(self.applied_torques)
+    #     fwd_rew = np.clip(self.base_vel[0], -vel_cap, vel_cap)
+    #     torque_rew = -np.linalg.norm(self.applied_torques)
 
-        rew_dict = {'fwd_rew': fwd_rew, 'torque_rew': torque_rew, 'x_vel': self.base_vel[0]}
+    #     rew_dict = {'fwd_rew': fwd_rew, 'torque_rew': torque_rew, 'x_vel': self.base_vel[0]}
 
-        rew = fwd_rew + 0.001 * torque_rew
-        return rew, rew_dict
+    #     rew = fwd_rew + 0.001 * torque_rew
+    #     return rew, rew_dict
     
     def get_privileged_info(self, fake_client=None, flat_ground=False, ray_start=100):
         ''' 

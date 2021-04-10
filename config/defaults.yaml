@@ -48,8 +48,7 @@ env_params:
   avg_time_per_perturb: 5.0 # seconds
   action_repeat: 4 # TODO change back to 6
   timeout: 60.0 # number of seconds to timeout after
-  flat_ground: True # this is for getting terrain scan in privileged info for Aliengo 
-  realTime: False # should never be True when training, only for visualzation or debugging MAYBE
+  # flat_ground: True # this is for getting terrain scan in privileged info for Aliengo 
   vis: False
   max_torque: 44.4 # from URDF 
   kp: 1.0  
@@ -76,6 +75,8 @@ env_params:
       lb: null
       ub: null
   
-  # reward_parts: #TODO
-  #   # reward_type: coefficient
-  #   forward_velocity: asdf
+  reward_parts: #TODO
+    # reward_type: coefficient
+    # note: the reward bounds are on the measured value of the thing, not on the reward term
+    forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
+    joint_torques_l2: [-0.00001]

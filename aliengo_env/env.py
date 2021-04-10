@@ -17,6 +17,7 @@ from .obstacles.hills import Hills
 from .obstacles.steps import Steps  
 from .obstacles.stepping_stones import SteppingStones
 from .obstacles.stairs import Stairs
+from .reward import RewardFunction
 
 class AliengoEnv(gym.Env):
     def __init__(self, 
@@ -24,13 +25,12 @@ class AliengoEnv(gym.Env):
                     # env_mode='pmtg',
                     apply_perturb=False,
                     avg_time_per_perturb=5.0, # seconds
-                    action_repeat=4, # TODO change back to 6
+                    action_repeat=4,
                     timeout=60.0, # number of seconds to timeout after
-                    flat_ground=True, # this is for getting terrain scan in privileged info for Aliengo 
-                    realTime=False, # should never be True when training, only for visualzation or debugging MAYBE
                     vis=False,
                     observation_parts=['joint_torques', 'joint_positions', 'joint_velocities', 'IMU'],
                     action_parts=['joint_positions'],
+                    reward_parts=['forward_velocity'],
                     obstacles=None,
                     **quadruped_kwargs):
                     # fixed=False,
@@ -43,11 +43,9 @@ class AliengoEnv(gym.Env):
         self.eps_timeout = 240.0/self.n_hold_frames * timeout # number of steps to timeout after
         # if U[0, 1) is less than this, perturb
         self.perturb_p = 1.0/(self.avg_time_per_perturb * 240.0) * self.n_hold_frames
-        self.flat_ground = flat_ground
         self.quadruped_kwargs = quadruped_kwargs
         print('self.quadruped_kwargs in aliengo_env', self.quadruped_kwargs)
         # setting these to class variables so that child classes can use it as such. 
-        self.realTime = realTime 
         self.vis = vis
 
         if render:
@@ -60,36 +58,20 @@ class AliengoEnv(gym.Env):
             raise RuntimeError('Pybullet could not connect to physics client')
 
         self.plane = self.client.loadURDF(str(os.path.dirname(__file__)) +  '/urdf/plane.urdf')
-        self.quadruped = self.init_quadruped()
+        self.quadruped = aliengo_quadruped.AliengoQuadruped(pybullet_client=self.client, 
+                                            vis=self.vis,
+                                            **self.quadruped_kwargs)
         self.client.setGravity(0,0,-9.8)
-        if self.realTime:
-            warnings.warn('\n\n' + '#'*100 + '\nExternal force/torque disturbances will NOT work properly with '
-                            'real time pybullet GUI enabled.\n' + '#'*100 + '\n') # how to make this warning yellow?
-        self.client.setRealTimeSimulation(self.realTime) # this has no effect in DIRECT mode, only GUI mode
+        self.client.setRealTimeSimulation(False) # setting this to True messes with things
         self.client.setTimeStep(1/240.0)
         
         self.observe = Observation(observation_parts, self.quadruped)
+        self.observation_space = spaces.Box(
+            low=self.observe.observation_lb,
+            high=self.observe.observation_ub,
+            dtype=np.float32)
+        
         self.act = Action(action_parts, self.quadruped)
-        # if self.env_mode == 'pmtg':
-        #     self.action_lb, self.action_ub = self.quadruped.get_pmtg_action_bounds() 
-        #     observation_lb, observation_ub = self.quadruped.get_pmtg_observation_bounds()
-        #     self.t = 0.0
-
-        # elif self.env_mode == 'hutter_pmtg':
-        #     self.action_lb, self.action_ub = self.quadruped.get_pmtg_action_bounds()
-        #     observation_lb, observation_ub = self.quadruped.get_hutter_pmtg_observation_bounds()
-
-        # elif self.env_mode == 'hutter_teacher_pmtg':
-        #     self.action_lb, self.action_ub = self.quadruped.get_pmtg_action_bounds()
-        #     observation_lb, observation_ub = self.quadruped.get_hutter_teacher_pmtg_observation_bounds()
-
-        # elif self.env_mode == 'flat':
-        #     self.action_lb, self.action_ub = self.quadruped.get_joint_position_bounds()
-        #     observation_lb, observation_ub = self.quadruped.get_observation_bounds()
-
-        # else:
-            # raise ValueError("env_mode should either be 'pmtg', 'hutter_pmtg', 'hutter_teacher_pmtg', or 'flat'. "
-            #                 "Value {} was given.".format(self.env_mode))
         self.action_lb = self.act.action_lb
         self.action_ub = self.act.action_ub
         self.eps_step_counter = 0 # Used for triggering timeout
@@ -97,44 +79,31 @@ class AliengoEnv(gym.Env):
         self.action_space = spaces.Box(
             low=self.act.action_lb,
             high=self.act.action_ub,
-            dtype=np.float32
-            )
-        self.observation_space = spaces.Box(
-            low=self.observe.observation_lb,
-            high=self.observe.observation_ub,
-            dtype=np.float32
-            )
+            dtype=np.float32)
 
 
         obstacles_dict = {'hills': Hills, 'steps': Steps, 'stairs': Stairs, 'stepping_stones': SteppingStones}
         if obstacles is not None:
             self.obstacles = obstacles_dict[obstacles](self.client, self.fake_client)
+
+        self.reward_func = RewardFunction(self.client, reward_parts, self.quadruped)
             
 
-
-    def init_quadruped(self):
-        quadruped = aliengo_quadruped.AliengoQuadruped(pybullet_client=self.client, 
-                                            vis=self.vis,
-                                            **self.quadruped_kwargs)
-        return quadruped
-
-
     def step(self, action):
-        # if (np.random.rand() < self.perturb_p) and self.apply_perturb: 
-        #     '''TODO eventually make disturbance generating function that applies disturbances for multiple timesteps'''
-        #     if np.random.rand() > 0.5:
-        #         # TODO returned values will be part of privledged information for teacher training
-        #         force, foot = self.quadruped.apply_foot_disturbance() 
-        #     else:
-        #         # TODO returned values will be part of privledged information for teacher training
-        #         wrench = self.quadruped.apply_torso_disturbance()
-
-        DELTA = 0.01
+        DELTA = 0.0001 # this should just be for floating point errors
         if not ((self.action_lb - DELTA <= action) & (action <= self.action_ub + DELTA)).all():
             print("Action passed to env.step(): ", action)
             raise ValueError('Action is out-of-bounds of:\n' + str(self.action_lb) + '\nto\n' + str(self.action_ub)) 
 
 
+        if (np.random.rand() < self.perturb_p) and self.apply_perturb: 
+            '''TODO eventually make disturbance generating function that applies disturbances for multiple timesteps'''
+            if np.random.rand() > 0.5:
+                # TODO returned values will be part of privledged information for teacher training
+                force, foot = self.quadruped.apply_foot_disturbance() 
+            else:
+                # TODO returned values will be part of privledged information for teacher training
+                wrench = self.quadruped.apply_torso_disturbance()
 
 
         for _ in range(self.n_hold_frames):
@@ -143,40 +112,13 @@ class AliengoEnv(gym.Env):
             self.client.stepSimulation()
             if self.vis: self.quadruped.visualize()
 
-        # if self.env_mode in ['pmtg', 'hutter_pmtg', 'hutter_teacher_pmtg'] :
-        #     for _ in range(self.n_hold_frames):
-        #         self.quadruped.pmtg_action(self.t, action)
-        #         self.t += 1./240.
-        #         self.client.stepSimulation()
-        #         if self.vis: self.quadruped.visualize()
-        # elif self.env_mode == 'flat':
-        #     for _ in range(self.n_hold_frames):
-        #         self.quadruped.set_joint_position_targets(action)
-        #         self.client.stepSimulation()
-        #         if self.vis: self.quadruped.visualize()
-        # else: raise ValueError("env_mode should either be 'pmtg', 'hutter_pmtg', 'hutter_teacher_pmtg', or 'flat'. "
-        #                                                                     "Value {} was given.".format(self.env_mode))
-
-
-        # for _ in range(self.n_hold_frames): 
-        #     self.client.stepSimulation()
-        #     if self.vis: self.quadruped.visualize()
         self.eps_step_counter += 1
-        self.quadruped.update_state(flat_ground=self.flat_ground, fake_client=self.fake_client)
+        self.quadruped.update_state(flat_ground=False, fake_client=self.fake_client)
 
         obs = self.observe()
-        # if self.env_mode == 'pmtg':
-        #     obs = self.quadruped.get_pmtg_observation()
-        # elif self.env_mode == 'hutter_pmtg':
-        #     obs = self.quadruped.get_hutter_pmtg_observation()
-        # elif self.env_mode == 'hutter_teacher_pmtg':
-        #     obs = self.quadruped.get_hutter_teacher_pmtg_observation()
-        # elif self.env_mode == 'flat':
-        #     obs = self.quadruped.get_observation()
-        # else: assert False
 
         info = {}
-        done, termination_dict = self._is_state_terminal() # this must come after self._update_state()
+        done, termination_dict = self.is_state_terminal() # this must come after self._update_state()
         info.update(termination_dict) # termination_dict is an empty dict if not done
 
         # if self.env_mode in ['pmtg', 'hutter_pmtg', 'hutter_teacher_pmtg']:
@@ -184,7 +126,7 @@ class AliengoEnv(gym.Env):
         # elif self.env_mode == 'flat':
         #     # raise NotImplementedError
         # else: assert False
-        rew, rew_dict = self.quadruped.reward()
+        rew, rew_dict = self.reward_func()
         self.update_mean_rew_dict(rew_dict)
 
         if done:
@@ -233,21 +175,9 @@ class AliengoEnv(gym.Env):
                                             ornObj=[0,0,0,1.0]) 
 
         self.quadruped.reset_joint_positions(stochastic=stochastic) 
-        for i in range(500): # to let the robot settle on the ground.
+        for i in range(500): # to let the robot settle on the ground. #TODO see if this is still necessary
             self.client.stepSimulation()
-        self.quadruped.update_state(flat_ground=self.flat_ground, fake_client=self.fake_client)
-        # if self.env_mode == 'pmtg':
-        #     self.t = 0.0
-        #     obs = self.quadruped.get_pmtg_observation()
-        # elif self.env_mode == 'hutter_pmtg':
-        #     self.t = 0.0
-        #     obs = self.quadruped.get_hutter_pmtg_observation()
-        # elif self.env_mode == 'hutter_teacher_pmtg':
-        #     self.t = 0.0
-        #     obs = self.quadruped.get_hutter_teacher_pmtg_observation()
-        # elif self.env_mode == 'flat':
-        #     obs = self.quadruped.get_observation()
-        # else: assert False
+        self.quadruped.update_state(flat_ground=True, fake_client=self.fake_client) #TODO get rid of flatground
         obs = self.observe()
 
         return obs
@@ -259,13 +189,7 @@ class AliengoEnv(gym.Env):
         return self.quadruped.render(mode=mode, client=client)
 
 
-    def close(self):
-        '''I belive this is required for an Open AI gym env.'''
-
-        pass
-
-
-    def _is_state_terminal(self, flipping_bounds=[np.pi/2., np.pi/4., np.pi/4.], height_lb=0.23, height_ub=0.8):
+    def is_state_terminal(self, flipping_bounds=[np.pi/2., np.pi/4., np.pi/4.], height_lb=0.23, height_ub=0.8):
         quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=flipping_bounds,
                                                                             height_lb=height_lb,
                                                                             height_ub=height_ub)
