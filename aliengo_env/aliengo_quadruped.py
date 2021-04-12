@@ -717,6 +717,22 @@ class AliengoQuadruped:
         # return phases, foot_positions # foot positions is the command in foot frame space
 
 
+    def iscen_pmtg(self, action, time, params):
+        """The action should consist of amplitude, walking_height, frequency, plus 12 joint positions residuals, all properly mapped."""
+        #TODO normalize the pmtg actions to fall on [-1, 1]
+
+        assert time >= 0
+
+        amplitude = action[0]
+        walking_height = action[1]
+        frequency = action[2]
+        residuals = action[3:]
+
+
+
+
+
+
     # def get_pmtg_action_bounds(self):
     #     '''Returns bounds of actions to set_trajectory_parameters. I don't really know what these should be. (I don't
     #     think it matters.)'''
@@ -1150,10 +1166,12 @@ class AliengoQuadruped:
         return len(points)
 
 
-    def set_joint_position_targets(self, positions, true_positions=False):
+    def set_joint_position_targets(self, positions, true_positions=False, time=None, params=None):
         '''
         Takes positions in range of [-1, 1]. These positions are mapped to the actual range of joint positions for 
         each joint of the robot. 
+        The time argument is not used; it is just to be consistent with other action functions.
+        #TODO how to use params here
         '''
 
         assert isinstance(positions, np.ndarray)

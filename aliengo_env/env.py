@@ -30,7 +30,7 @@ class AliengoEnv(gym.Env):
                     timeout=60.0, # number of seconds to timeout after
                     vis=False,
                     observation_parts=['joint_torques', 'joint_positions', 'joint_velocities', 'IMU'],
-                    action_parts=['joint_positions'],
+                    action_space=['joint_positions'],
                     reward_parts=['forward_velocity'],
                     obstacles=None,
                     **quadruped_kwargs):
@@ -72,7 +72,7 @@ class AliengoEnv(gym.Env):
             high=self.observe.observation_ub,
             dtype=np.float32)
         
-        self.act = Action(action_parts, self.quadruped)
+        self.act = Action(action_space, self.quadruped)
         self.action_lb = self.act.action_lb
         self.action_ub = self.act.action_ub
         self.eps_step_counter = 0 # Used for triggering timeout
@@ -116,7 +116,7 @@ class AliengoEnv(gym.Env):
 
 
         for _ in range(self.n_hold_frames):
-            self.act(action)
+            self.act(action, self.t)
             self.t += 1./240.
             self.client.stepSimulation()
             if self.vis: self.quadruped.visualize()

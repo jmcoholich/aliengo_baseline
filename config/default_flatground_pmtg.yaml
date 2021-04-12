@@ -37,7 +37,7 @@ cuda: True
 use_proper_time_limits: True
 recurrent_policy: False
 use_linear_lr_decay: False
-num_torch_threads: null # null just means don't set anything.
+num_torch_threads: 1 # null just means don't set anything.
 
 
 env_params:
@@ -70,10 +70,25 @@ env_params:
   # eventually add pmtg and footstep_param stuff
   # null means to use the widest bounds allowed ie no additional restriction imposed
   action_space: 
-    joint_positions: #TODO implement the bounds and other action spaces.
-      lb: null
-      ub: null
-  
+    # joint_positions: #TODO implement the bounds and other action spaces.
+    #   lb: null
+    #   ub: null
+    Iscen_PMTG: # This pmtg is the original one from "Policies Modulating Trajectory Generators"
+      gait: trot
+      step_height:
+      amplitude_bounds:
+        lb: 
+        ub:
+      walking_height_bounds: 
+        lb: 
+        ub:
+      frequency_bounds:
+        lb:
+        ub:
+      residual_bounds:
+        lb:
+        ub:
+
   reward_parts: #TODO
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
