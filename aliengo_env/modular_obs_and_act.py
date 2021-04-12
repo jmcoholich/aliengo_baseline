@@ -58,9 +58,10 @@ class Action():
         assert all(part in self.allowed for part in self.parts.keys())
         self.parts = sorted(self.parts.items())
         self.quadruped = quadruped
-        self.action_lb, self.action_ub, _, _ = self.quadruped._find_position_bounds()
+        self.action_lb = -np.ones(12) 
+        self.action_ub = np.ones(12)
 
 
     def __call__(self, action):
-        self.quadruped.set_joint_position_targets(action, true_positions=True)
+        self.quadruped.set_joint_position_targets(action, true_positions=False)
         
