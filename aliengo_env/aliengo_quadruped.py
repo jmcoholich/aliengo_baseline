@@ -1174,13 +1174,13 @@ class AliengoQuadruped:
         self.true_joint_position_target_history.insert(0, positions)
 
 
-    def _positions_to_actions(self, positions):
+    def positions_to_actions(self, positions):
         '''Maps actual robot joint positions in radians to the range of [-1.0, 1.0]'''
 
         return (positions - self.position_mean) / (self.position_range * 0.5)
 
 
-    def _actions_to_positions(self, actions):
+    def actions_to_positions(self, actions):
         '''
         Takes actions or normalized positions in the range of [-1.0, 1.0] and maps them to actual joint positions in 
         radians.
@@ -1253,27 +1253,31 @@ class AliengoQuadruped:
     # def get_base_twist(self):
     #     return np.array(self.client.getBaseVelocity(self.quadruped)).flatten()
 
+    def generate_reset_joint_positions(self, stochastic=True, true_positions=True):
+        """Returns the quadruped positions corresponding to the  default starting position, knees slightly bent,
+        from first line of mocap file"""
+
+        positions = np.array([0.037199,    0.660252,   -1.200187,   -0.028954,    0.618814, 
+                            -1.183148,    0.048225,    0.690008,   -1.254787,   -0.050525,    0.661355,   -1.243304])
+        if stochastic: 
+            positions += (np.random.random_sample(12) - 0.5) * self.position_range * 0.05
+            positions = np.clip(positions, self.positions_lb, self.positions_ub)
+        if not true_positions: # convert to true positions vs normalized positions
+            positions = self.positions_to_actions(positions)
+        return positions
+
+
         
-    def reset_joint_positions(self, positions=None, stochastic=True):
-        '''This ignores any physics or controllers and just overwrites joint positions to the given value. 
+    def reset_joint_positions(self, positions, true_positions=True):
+        """
+        This ignores any physics or controllers and just overwrites joint positions to the given value. 
         Returns the foot positions in foot frame, for use as an initial observation in PMTG controllers. 
         NOTE: I am assuming that this function is always called during env.reset(). I am using it to 
         initialize self.foot_target_history and self.phases
-        ''' 
+        """
 
-        if positions: 
-            positions = self._actions_to_positions(positions)
-        else: 
-            # use the default starting position, knees slightly bent, from first line of mocap file
-            positions = np.array([0.037199,    0.660252,   -1.200187,   -0.028954,    0.618814, 
-                            -1.183148,    0.048225,    0.690008,   -1.254787,   -0.050525,    0.661355,   -1.243304])
-
-        if stochastic: 
-            # add random noise to positions
-            noise = (np.random.rand(12) - 0.5) * self.position_range * 0.05
-            positions += noise
-            positions = np.clip(positions, self.positions_lb, self.positions_ub)
-
+        if not true_positions:
+            positions = self.actions_to_positions(positions)
 
 
         for i in range(self.n_motors): # for some reason there is no p.resetJointStates (plural)
@@ -1282,19 +1286,16 @@ class AliengoQuadruped:
                                 positions[i],
                                 targetVelocity=0)
 
-        ''' TODO: see if the following is actually necessary. i.e. does pybullet retain motor control targets after you 
-         Reset joint positions? If so, the following is necessary'''
-
-        self.client.setJointMotorControlArray(self.quadruped,
-                                    self.motor_joint_indices,
-                                    controlMode=p.POSITION_CONTROL,
-                                    targetPositions=positions,
-                                    forces=self.max_torque * np.ones(self.n_motors),
-                                    positionGains=self.kp * np.ones(12),
-                                    velocityGains=self.kd * np.ones(12))
+        # self.client.setJointMotorControlArray(self.quadruped,
+        #                             self.motor_joint_indices,
+        #                             controlMode=p.POSITION_CONTROL,
+        #                             targetPositions=positions,
+        #                             forces=self.max_torque * np.ones(self.n_motors),
+        #                             positionGains=self.kp * np.ones(12),
+        #                             velocityGains=self.kd * np.ones(12))
 
 
-
+        # TODO should the below code just go to reset state?
         self.foot_target_history = [self.get_foot_frame_foot_positions()] * 3
         self.phases = np.array([0, np.pi, np.pi, 0])
         self.f_i = np.zeros(4)

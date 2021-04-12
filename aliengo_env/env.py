@@ -89,12 +89,7 @@ class AliengoEnv(gym.Env):
         self.reward_func = RewardFunction(self.client, reward_parts, self.quadruped)
             
 
-    def step(self, action):
-        DELTA = 0.0001 # this should just be for floating point errors
-        if not ((self.action_lb - DELTA <= action) & (action <= self.action_ub + DELTA)).all():
-            print("Action passed to env.step(): ", action)
-            raise ValueError('Action is out-of-bounds of:\n' + str(self.action_lb) + '\nto\n' + str(self.action_ub)) 
-
+    def generate_disturbances(self):
 
         if (np.random.rand() < self.perturb_p) and self.apply_perturb: 
             '''TODO eventually make disturbance generating function that applies disturbances for multiple timesteps'''
@@ -104,6 +99,17 @@ class AliengoEnv(gym.Env):
             else:
                 # TODO returned values will be part of privledged information for teacher training
                 wrench = self.quadruped.apply_torso_disturbance()
+
+
+
+    def step(self, action):
+        DELTA = 0.0001 # this should just be for floating point errors
+        if not ((self.action_lb - DELTA <= action) & (action <= self.action_ub + DELTA)).all():
+            print("Action passed to env.step(): ", action)
+            raise ValueError('Action is out-of-bounds of:\n' + str(self.action_lb) + '\nto\n' + str(self.action_ub)) 
+
+
+        self.generate_disturbances()
 
 
         for _ in range(self.n_hold_frames):
@@ -121,11 +127,6 @@ class AliengoEnv(gym.Env):
         done, termination_dict = self.is_state_terminal() # this must come after self._update_state()
         info.update(termination_dict) # termination_dict is an empty dict if not done
 
-        # if self.env_mode in ['pmtg', 'hutter_pmtg', 'hutter_teacher_pmtg']:
-        #     rew, rew_dict = self.quadruped.reward()
-        # elif self.env_mode == 'flat':
-        #     # raise NotImplementedError
-        # else: assert False
         rew, rew_dict = self.reward_func()
         self.update_mean_rew_dict(rew_dict)
 
@@ -161,21 +162,13 @@ class AliengoEnv(gym.Env):
         self.eps_step_counter = 0
         self.t = 0.0
         ground_height = self.obstacles.reset()
-        # TODO fix the sphaghetti below. Implement fixed quadruped for debugging purposes (doesn't need to be fed in from yaml)
-        # if 'fixed' in self.quadruped_kwargs: # if I previous said the quadruped should be fixed, don't move it
-        #     if self.quadruped_kwargs['fixed'] and 'fixed_position' in self.quadruped_kwargs:
-        #         posObj = self.quadruped_kwargs['fixed_position']
-        #     else:
-        #         posObj = [0,0,base_height]
-        # else: 
-        #     posObj = [0,0,base_height]
         posObj = [0,0,base_height + ground_height] if ground_height is not None else [0,0,base_height]
         self.client.resetBasePositionAndOrientation(self.quadruped.quadruped,
                                             posObj=posObj, 
                                             ornObj=[0,0,0,1.0]) 
-
-        self.quadruped.reset_joint_positions(stochastic=stochastic) 
-        for i in range(500): # to let the robot settle on the ground. #TODO see if this is still necessary
+        reset_position = self.quadruped.generate_reset_joint_positions(stochastic=stochastic)
+        for i in range(50): # to let the robot settle on the ground.
+            self.quadruped.reset_joint_positions(reset_position) 
             self.client.stepSimulation()
         self.quadruped.update_state(flat_ground=True, fake_client=self.fake_client) #TODO get rid of flatground
         obs = self.observe()
