@@ -18,6 +18,7 @@ from .obstacles.steps import Steps
 from .obstacles.stepping_stones import SteppingStones
 from .obstacles.stairs import Stairs
 from .reward import RewardFunction
+from .utils import DummyObstacle
 
 class AliengoEnv(gym.Env):
     def __init__(self, 
@@ -85,6 +86,8 @@ class AliengoEnv(gym.Env):
         obstacles_dict = {'hills': Hills, 'steps': Steps, 'stairs': Stairs, 'stepping_stones': SteppingStones}
         if obstacles is not None:
             self.obstacles = obstacles_dict[obstacles](self.client, self.fake_client)
+        else:
+            self.obstacles = DummyObstacle()
 
         self.reward_func = RewardFunction(self.client, reward_parts, self.quadruped)
             

@@ -545,19 +545,19 @@ class AliengoQuadruped:
         return -np.ones(50), np.ones(50)
     
 
-    def get_observation(self):
-        # observation dim is 12 * 3 + 4 + 4 + 3 + 3 = 50
-        if not self.state_is_updated:
-            raise ValueError('State has not been updated since last "get observation" call.')
-        obs = np.concatenate((self.applied_torques, 
-                            self._positions_to_actions(self.joint_positions),
-                            self.joint_velocities,
-                            self.base_orientation,
-                            self.foot_normal_forces,
-                            self.base_vel,
-                            self.base_avel)) 
-        self.state_is_updated = False
-        return obs
+    # def get_observation(self):
+    #     # observation dim is 12 * 3 + 4 + 4 + 3 + 3 = 50
+    #     if not self.state_is_updated:
+    #         raise ValueError('State has not been updated since last "get observation" call.')
+    #     obs = np.concatenate((self.applied_torques, 
+    #                         self.positions_to_actions(self.joint_positions),
+    #                         self.joint_velocities,
+    #                         self.base_orientation,
+    #                         self.foot_normal_forces,
+    #                         self.base_vel,
+    #                         self.base_avel)) 
+    #     self.state_is_updated = False
+    #     return obs
 
 
     # def reward(self): #TODO
@@ -1160,7 +1160,7 @@ class AliengoQuadruped:
         
         if not true_positions:
             assert ((-1.0 <= positions) & (positions <= 1.0)).all(), '\nposition received: ' + str(positions) + '\n'
-            positions = self._actions_to_positions(positions)
+            positions = self.actions_to_positions(positions)
 
         self.client.setJointMotorControlArray(self.quadruped,
             self.motor_joint_indices,

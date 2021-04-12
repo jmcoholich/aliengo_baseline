@@ -1,6 +1,6 @@
 # Added args
 wandb_project: default
-gait_type: trot
+gait_type: null
 gpu_idx: 0
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
@@ -20,20 +20,20 @@ value_loss_coef: 0.5
 max_grad_norm: 0.5
 seed: 1
 cuda_deterministic: False
-num_processes: 1 #TODO
-num_steps: 10 #TODO 600
+num_processes: 20 
+num_steps: 600
 ppo_epoch: 10
-num_mini_batch: 10 # TODO 32
+num_mini_batch: 32
 clip_param: 0.2
-log_interval: 1 #TODO
+log_interval: 100
 save_interval: 100
 eval_interval: null
 num_env_steps: 100_000_000
 env_name: aliengo
-wandb_log_interval: 1 #TODO
+wandb_log_interval: 10 #TODO 100
 log_dir: /tmp/gym/
 # save_dir: ./trained_models/
-cuda: True # changed from no_cuda to simplify
+cuda: True
 use_proper_time_limits: True
 recurrent_policy: False
 use_linear_lr_decay: False
@@ -41,8 +41,8 @@ num_torch_threads: null # null just means don't set anything.
 
 
 env_params:
-  obstacles: steps
-  render: False #TODO
+  obstacles: null
+  render: False
   # env_mode: pmtg
   apply_perturb: False
   avg_time_per_perturb: 5.0 # seconds
@@ -54,9 +54,8 @@ env_params:
   kp: 1.0  
   kd: 1.0 
   fixed: False 
-  fixed_position: [0,0,1.0] 
-  fixed_orientation: [0,0,0]
-  vis: False
+  fixed_position: [0,0,1.0] #TODO remove
+  fixed_orientation: [0,0,0] #TODO remove
   gait_type: trot
   observation_parts: #TODO enumerate all possible types that I can even put here. Also add terrain heightmaps
     - joint_torques
@@ -71,7 +70,7 @@ env_params:
   # eventually add pmtg and footstep_param stuff
   # null means to use the widest bounds allowed ie no additional restriction imposed
   action_parts: 
-    joint_positions:
+    joint_positions: #TODO implement the bounds and other action spaces.
       lb: null
       ub: null
   
