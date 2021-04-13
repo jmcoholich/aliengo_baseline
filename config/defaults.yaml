@@ -78,4 +78,4 @@ env_params:
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
     forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
-    joint_torques_l2: [-0.00001]
+    joint_torques_l2: [-0.000005]

@@ -30,7 +30,7 @@ save_interval: 100
 eval_interval: null
 num_env_steps: 100_000_000
 env_name: aliengo
-wandb_log_interval: 10 #TODO 100
+wandb_log_interval: 100
 log_dir: /tmp/gym/
 # save_dir: ./trained_models/
 cuda: True
@@ -64,6 +64,7 @@ env_params:
     - base_angular_velocity
     - base_roll
     - base_pitch
+    - trajectory_generator_phases
     # - base_linear_acceleration #TODO
 
   # possible values ['joint_positions', 'joint_velocities', 'joint_torques'] 
@@ -96,4 +97,4 @@ env_params:
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
     forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
-    joint_torques_l2: [-0.00001]
+    joint_torques_l2: [-0.000005]
