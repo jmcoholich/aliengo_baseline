@@ -30,7 +30,7 @@ save_interval: 100
 eval_interval: null
 num_env_steps: 100_000_000
 env_name: aliengo
-wandb_log_interval: 10 #TODO 100
+wandb_log_interval: 100
 log_dir: /tmp/gym/
 # save_dir: ./trained_models/
 cuda: False

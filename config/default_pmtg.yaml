@@ -20,8 +20,8 @@ value_loss_coef: 0.5
 max_grad_norm: 0.5
 seed: 1
 cuda_deterministic: False
-num_processes: 20 
-num_steps: 600
+num_processes: 16 
+num_steps: 750
 ppo_epoch: 10
 num_mini_batch: 32
 clip_param: 0.2
@@ -74,20 +74,23 @@ env_params:
     #   lb: null
     #   ub: null
     Iscen_PMTG: # This pmtg is the original one from "Policies Modulating Trajectory Generators"
-      gait: trot
-      step_height:
+      gait: trot # allowed: trot, walk
       amplitude_bounds:
-        lb: 
-        ub:
-      walking_height_bounds: 
-        lb: 
-        ub:
+        lb: 0.0
+        ub: 0.3
+      walking_height_bounds: # this is just negative step_bottom
+        lb: 0.25
+        ub: 0.6
       frequency_bounds:
-        lb:
-        ub:
+        lb: 0.00
+        ub: 5.00
       residual_bounds:
-        lb:
-        ub:
+        lb: -0.1
+        ub: 0.1
+      step_height: 0.15
+      x_offset: 0.02109375
+      lateral_offset: 0.075
+      
 
   reward_parts: #TODO
     # reward_type: coefficient

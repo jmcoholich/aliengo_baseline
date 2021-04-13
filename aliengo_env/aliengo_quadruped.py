@@ -678,63 +678,57 @@ class AliengoQuadruped:
         return self.link_masses
 
 
-    def set_trajectory_parameters(self, t, f=2.00, step_height=0.2, step_bottom=-0.45, lateral_offset=0.075,
-        x_offset=0.02109375, step_len=0.2, residuals=np.zeros(12)):
-        """Takes parameters of a trot trajectory (defined in this function), a phase variable, and target foot position
-        residuals. Calls set_foot_positions() to actuate robot. If only a cyclical phase is given and no foot position
-        residuals, the robot will step in place. The frequency is in cycles per second, not radians per second. 
-        The foot z position represents the BOTTOM of the collision sphere"""
+    def trajectory_generator(self, time, amplitude, walking_height, frequency, params):
 
-        # # other trajectory parameters
-        # step_height = 0.2 # from paper
-        # step_bottom = -0.45 # from paper
-        # lateral_offset = 0.075 # how much to push the feet out 
-        # x_offset = 0.02109375 # experimental, close to balance 
+        assert time >= 0
 
-        assert t >= 0
-        if self.gait_type == 'trot':
+        if params['gait'] == 'trot':
             phase_offsets = np.array([0, np.pi, np.pi, 0])
-        elif self.gait_type == 'walk':
-            # phase_offsets = np.array([1.5, 0.5, 1.0, 0])  * np.pi #FR, FL, RR, RL
+        elif params['gait'] == 'walk':
             phase_offsets = np.array([0.0, 1.0, 0.5, 1.5]) * np.pi #FR, FL, RR, RL
-            # phase_offsets = np.array([np.pi,0,0,0]) #FR, FL, RR, RL
 
-        phases = (phase_offsets + f * 2 * np.pi * t) % (2 * np.pi)
+        phases = (phase_offsets + frequency * 2 * np.pi * time) % (2 * np.pi)
         self.phases = phases
 
         foot_positions = np.zeros((4, 3))
         for i in range(4):
-            z = step_height * self._foot_step_ztraj(phases[i]) + step_bottom
-            x = np.cos(phases[i]) * step_len
+            z = params['step_height'] * self._foot_step_ztraj(phases[i]) - walking_height
+            x = np.cos(phases[i]) * amplitude
             foot_positions[i] = np.array([x, 0, z])
 
-        foot_positions[[0,2], 1] -= lateral_offset
-        foot_positions[[1,3], 1] += lateral_offset
-        foot_positions[:,0] += x_offset
-        # foot_positions += residuals
+        foot_positions[[0,2], 1] -= params['lateral_offset']
+        foot_positions[[1,3], 1] += params['lateral_offset']
+        foot_positions[:,0] += params['x_offset']
         joint_targets = self.set_foot_positions(foot_positions, return_joint_targets=True)
-        self.set_joint_position_targets(joint_targets + residuals, true_positions=True)
-        # return phases, foot_positions # foot positions is the command in foot frame space
+        return joint_targets
 
 
     def iscen_pmtg(self, action, time, params):
-        """The action should consist of amplitude, walking_height, frequency, plus 12 joint positions residuals, all properly mapped."""
-        #TODO normalize the pmtg actions to fall on [-1, 1]
+        """
+        The action should consist of amplitude, walking_height, frequency, plus 12 joint positions residuals, 
+        all properly mapped.
+        """
 
-        assert time >= 0
-
-        amplitude = action[0] 
-        walking_height = action[1]
-        frequency = action[2]
-        residuals = action[3:]
-
+        amplitude, walking_height, frequency, true_residuals = self._unpack_iscen_pmtg_args(action, params)
+        true_joint_positions = self.trajectory_generator(time, amplitude, walking_height, frequency, params)
+        self.set_joint_position_targets(true_joint_positions + true_residuals, true_positions=True) 
 
 
     def _unpack_iscen_pmtg_args(self, action, params):
-        amplitude = action[0] * (params['amplitude_bounds']['ub'] - params['amplitude_bounds']['lb']) + params['amplitude_bounds']['lb']
-        walking_height = action[1]
-        frequency = action[2]
-        residuals = action[3:]
+
+        assert params['amplitude_bounds']['ub'] >= params['amplitude_bounds']['lb']
+        assert params['walking_height_bounds']['ub'] >= params['walking_height_bounds']['lb']
+        assert params['frequency_bounds']['ub'] >= params['frequency_bounds']['lb']
+        assert params['residual_bounds']['ub'] >= params['residual_bounds']['lb']
+
+        amplitude = action[0] * (params['amplitude_bounds']['ub'] - params['amplitude_bounds']['lb']) * 0.5 \
+                        + (params['amplitude_bounds']['lb'] + params['amplitude_bounds']['ub']) * 0.5
+        walking_height = action[1] * (params['walking_height_bounds']['ub'] - params['walking_height_bounds']['lb']) \
+                        * 0.5 + (params['walking_height_bounds']['lb'] + params['walking_height_bounds']['ub']) * 0.5
+        frequency = action[2] * (params['frequency_bounds']['ub'] - params['frequency_bounds']['lb']) \
+                        * 0.5 + (params['frequency_bounds']['lb'] + params['frequency_bounds']['ub']) * 0.5
+        residuals = action[3:] * (params['residual_bounds']['ub'] - params['residual_bounds']['lb']) \
+                    * 0.5 * self.position_range * 0.5
         return amplitude, walking_height, frequency, residuals
 
 
@@ -1537,9 +1531,9 @@ if __name__ == '__main__':
     client.setTimeStep(1/240.)
     client.setGravity(0,0,-9.8)
     client.setRealTimeSimulation(0) # this has no effect in DIRECT mode, only GUI mode
-    plane = client.loadURDF(os.path.join(os.path.dirname(__file__), '../urdf/plane.urdf'))
+    plane = client.loadURDF('./urdf/plane.urdf')
     # set kp = 1.0 just for when I'm tracking, to eliminate it as a *large* source of error
-    quadruped = Aliengo(client, fixed=True, fixed_orientation=[0] * 3, fixed_position=[0.15,-0.15,0.7], kp=1.0, 
+    quadruped = AliengoQuadruped(client, fixed=True, fixed_orientation=[0] * 3, fixed_position=[0.15,-0.15,0.7], kp=1.0, 
                         vis=False, gait_type='trot')
 
     # sine_tracking_test(client, quadruped) 
