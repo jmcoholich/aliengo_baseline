@@ -173,7 +173,7 @@ class AliengoEnv(gym.Env):
         for i in range(50): # to let the robot settle on the ground.
             self.quadruped.reset_joint_positions(reset_position) 
             self.client.stepSimulation()
-        self.quadruped.update_state(flat_ground=True, fake_client=self.fake_client) #TODO get rid of flatground
+        self.quadruped.update_state(flat_ground=True, fake_client=self.fake_client)
         obs = self.observe()
 
         return obs

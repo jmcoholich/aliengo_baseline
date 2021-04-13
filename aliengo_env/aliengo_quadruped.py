@@ -680,10 +680,10 @@ class AliengoQuadruped:
 
     def set_trajectory_parameters(self, t, f=2.00, step_height=0.2, step_bottom=-0.45, lateral_offset=0.075,
         x_offset=0.02109375, step_len=0.2, residuals=np.zeros(12)):
-        '''Takes parameters of a trot trajectory (defined in this function), a phase variable, and target foot position
+        """Takes parameters of a trot trajectory (defined in this function), a phase variable, and target foot position
         residuals. Calls set_foot_positions() to actuate robot. If only a cyclical phase is given and no foot position
         residuals, the robot will step in place. The frequency is in cycles per second, not radians per second. 
-        The foot z position represents the BOTTOM of the collision sphere'''
+        The foot z position represents the BOTTOM of the collision sphere"""
 
         # # other trajectory parameters
         # step_height = 0.2 # from paper
@@ -723,12 +723,19 @@ class AliengoQuadruped:
 
         assert time >= 0
 
-        amplitude = action[0]
+        amplitude = action[0] 
         walking_height = action[1]
         frequency = action[2]
         residuals = action[3:]
 
 
+
+    def _unpack_iscen_pmtg_args(self, action, params):
+        amplitude = action[0] * (params['amplitude_bounds']['ub'] - params['amplitude_bounds']['lb']) + params['amplitude_bounds']['lb']
+        walking_height = action[1]
+        frequency = action[2]
+        residuals = action[3:]
+        return amplitude, walking_height, frequency, residuals
 
 
 
@@ -1304,13 +1311,13 @@ class AliengoQuadruped:
                                 positions[i],
                                 targetVelocity=0)
 
-        # self.client.setJointMotorControlArray(self.quadruped,
-        #                             self.motor_joint_indices,
-        #                             controlMode=p.POSITION_CONTROL,
-        #                             targetPositions=positions,
-        #                             forces=self.max_torque * np.ones(self.n_motors),
-        #                             positionGains=self.kp * np.ones(12),
-        #                             velocityGains=self.kd * np.ones(12))
+        self.client.setJointMotorControlArray(self.quadruped,
+                                    self.motor_joint_indices,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPositions=positions,
+                                    forces=self.max_torque * np.ones(self.n_motors),
+                                    positionGains=self.kp * np.ones(12),
+                                    velocityGains=self.kd * np.ones(12))
 
 
         # TODO should the below code just go to reset state?
