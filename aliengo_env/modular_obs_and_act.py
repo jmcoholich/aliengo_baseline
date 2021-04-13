@@ -33,13 +33,15 @@ class Observation():
                 'base_angular_velocity': 3,
                 'base_roll': 1,
                 'base_pitch': 1,
-                'base_yaw': 1}
-                # 'trajectory_generator_phases': 8}
+                'base_yaw': 1,
+                'trajectory_generator_phases': 8}
         assert all(part in self.handles.keys() for part in parts)
         self.parts.sort() # to insure that simply passing the parts in a different order doesn't specify a different env
 
         self.obs_len = 0
         for part in parts: self.obs_len += self.lengths[part] 
+
+        # the below bounds are arbitrary and not used in the RL algorithms
         self.observation_lb = -np.ones(self.obs_len)
         self.observation_ub = np.ones(self.obs_len)
     
