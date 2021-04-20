@@ -18,6 +18,7 @@ from .a2c_ppo_acktr.arguments import get_args
 from .a2c_ppo_acktr.envs import make_vec_envs
 from .a2c_ppo_acktr.model import Policy
 from .a2c_ppo_acktr.storage import RolloutStorage
+from .a2c_ppo_acktr.utils import get_vec_normalize
 from .evaluation import evaluate
 
 
@@ -49,9 +50,12 @@ class WandbLogWrapper:
             self.counter = 0
 
 
-def main(args, config_yaml_file):
+def main(args, config_yaml_file, resume=False):
     """Takes the stem of the config yaml file name (ie file name without .yaml). """
 
+    if resume:
+        f = os.path.join('./trained_models', config_yaml_file + '.pt')
+        actor_critic, ob_rms, optimizer_state_dict, training_info = torch.load(f, 'cpu')
     total_env_steps = 0
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
@@ -74,14 +78,21 @@ def main(args, config_yaml_file):
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False, env_params=args.env_params)
+    
+    if resume:
+        vec_norm = get_vec_normalize(envs)
+        if vec_norm is not None:
+            vec_norm.eval()
+            vec_norm.ob_rms = ob_rms
 
     action_ub = torch.from_numpy(envs.action_space.high).to(device)
     action_lb = torch.from_numpy(envs.action_space.low).to(device)
 
-    actor_critic = Policy(
-        envs.observation_space.shape,
-        envs.action_space,
-        base_kwargs={'recurrent': args.recurrent_policy})
+    if not resume:
+        actor_critic = Policy(
+            envs.observation_space.shape,
+            envs.action_space,
+            base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
     if args.algo == 'a2c':
@@ -107,6 +118,9 @@ def main(args, config_yaml_file):
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(
             actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
+    if resume: # load the old optimizer state dict 
+        agent.optimizer.load_state_dict(optimizer_state_dict)
+
 
     if args.gail:
         assert len(envs.observation_space.shape) == 1
@@ -233,7 +247,9 @@ def main(args, config_yaml_file):
 
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
+                getattr(utils.get_vec_normalize(envs), 'obs_rms', None),
+                agent.optimizer.state_dict(),
+                {} # training info
             ], os.path.join(save_dir, config_yaml_file + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:

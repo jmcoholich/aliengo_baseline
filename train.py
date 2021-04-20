@@ -37,9 +37,15 @@ def main(): #TODO add a vis flag for training. (just to make sure the env is cre
                         help="specify name of yaml config file. If none is given, use default.yaml",
                         type=str,
                         default="defaults")
+    parser.add_argument("--resume", 
+                        help="loads a trained_model corresponding to the yaml file and resumes training.",
+                        action="store_true",
+                        default=False)
     args = parser.parse_args()
+    if args.resume:
+        warn("Resuming training. Run can no longer be determininistically reproduced.")
     main_args = get_params(args.config)
-    ppo_main(main_args, args.config)
+    ppo_main(main_args, args.config, args.resume)
 
 
 if __name__ == '__main__':
