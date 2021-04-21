@@ -3,7 +3,7 @@ from collections import OrderedDict
 from utils import DummyObstacle
 
 class Termination():
-    def __init__(self, termination_conditions, obstacle):
+    def __init__(self, termination_conditions, obstacle, quadruped, env):
         """
         There are two types of termination conditions
         1. Ones passed through termination_conditions arg (included in self.all_conditions)
@@ -11,7 +11,8 @@ class Termination():
         3. Termination based on reaching the end of the terrain 
         4. Termination based on reaching the last generated footstep
         """
-
+        self.env = env
+        self.quadruped = quadruped
         self.termination_conditions = self._sort_term_conds(termination_conditions, obstacle)
         self.obstacle = obstacle
         self.type_one_conditions = {'height_bounds': self.height_bounds,
@@ -76,7 +77,11 @@ class Termination():
         return output
     
     def height_bounds(self, lb, ub):
+        return self.quadruped.base_position <= lb or self.quadruped.base_position >= lb
 
     def orientation_bounds(self, x, y, z):
+        euler_angles = np.array(p.getEulerFromQuaternion(self.quadruped.base_orientation))
+        return (abs(euler_angles) > [x, y, z]).any()
 
     def timeout(self, n_seconds):
+        return self.env.eps_step_counter >= 240.0/self.env.n_hold_frames * n_seconds

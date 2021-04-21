@@ -4,8 +4,9 @@
 def FootstepTargets():
     def __init__(self, params, quadruped):
         self.current_footstep = 0
+        self.params = params
         self.quadruped = quadruped
-        self.footsteps = self.generate_footsteps(params)
+        self.generate_footsteps(self.params)
 
 
     def generate_footsteps(self, params):
@@ -72,7 +73,7 @@ def FootstepTargets():
     def footstep_reached(self, distance_threshold):
         """Returns 1 if the footstep has been reached (and increments current footstep), else 0."""
         
-        dist = np.linalg.norm(self.get_current_footstep_distance)
+        dist = np.linalg.norm(self.get_current_footstep_distance())
         if dist <= distance_threshold:
             reached = 1.0
             self.current_footstep += 1
@@ -82,4 +83,10 @@ def FootstepTargets():
         return reached 
 
     def is_timeout(self):
-        pass
+        assert self.current_footstep <= len(self.footsteps)
+        return self.current_footstep == self.footsteps
+
+    def reset(self): #TODO add call for this in env
+        self.current_footstep = 0
+        self.generate_footsteps(self.params)
+        

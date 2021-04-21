@@ -94,7 +94,7 @@ class AliengoEnv(gym.Env):
 
         self.reward_func = RewardFunction(self.client, reward_parts, self.quadruped)
 
-        self.termination_func = Termination(termination_conditions, self.obstacles)
+        self.termination_func = Termination(termination_conditions, self.obstacles, self.quadruped, self)
             
 
     def generate_disturbances(self):
