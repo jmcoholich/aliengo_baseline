@@ -56,7 +56,6 @@ def main(args, config_yaml_file, resume=False):
     if resume:
         f = os.path.join('./trained_models', config_yaml_file + '.pt')
         actor_critic, ob_rms, optimizer_state_dict, training_info = torch.load(f, 'cpu')
-    total_env_steps = 0
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
 
@@ -156,7 +155,14 @@ def main(args, config_yaml_file, resume=False):
     start = time.time()
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
-    for j in range(num_updates):
+    
+    if resume:
+        start_idx = training_info["update_number"]
+        total_env_steps = training_info["update_number"] * args.num_steps * args.num_processes
+    else:
+        start_idx = 0
+        total_env_steps = 0
+    for j in range(start_idx, num_updates):
 
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
@@ -249,7 +255,7 @@ def main(args, config_yaml_file, resume=False):
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'obs_rms', None),
                 agent.optimizer.state_dict(),
-                {} # training info
+                {"update_number": j} # training info
             ], os.path.join(save_dir, config_yaml_file + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
