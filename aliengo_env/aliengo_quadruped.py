@@ -20,7 +20,8 @@ class AliengoQuadruped:
                     fixed_position=[0,0,1.0], 
                     fixed_orientation=[0,0,0], 
                     vis=False,
-                    gait_type='trot'):
+                    gait_type='trot',
+                    footstep_params=None):
         # print('fixed_position received in Aliengo constructor', fixed_position)
         if gait_type not in ['trot', 'walk']:
             raise ValueError('Current gait must be of type "walk" or "trot".')
@@ -94,6 +95,9 @@ class AliengoQuadruped:
         # enable force/torque sensing for knee joints, to avoid walking that excessively loads them
         for joint in self.knee_joints: 
             self.client.enableJointForceTorqueSensor(self.quadruped, joint, enableSensor=True)
+
+        if footstep_params is not None:
+            self.footstep_generator = FootstepTargets(footstep_params, self)
 
 
     def init_vis(self):
@@ -769,6 +773,13 @@ class AliengoQuadruped:
             return 2*k*k*k - 9*k*k + 12*k - 4
 
     
+    # def get_foot_global_positions(self):
+    #     """Returns an array of shape (4, 3) which gives the global positions of the bottom of the feet."""
+    #     global_pos = np.array([i[0] for i in self.client.getLinkStates(self.quadruped, self.foot_links)])
+    #     global_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
+    #     return global_pos
+
+
     def get_foot_frame_foot_positions(self, global_pos=None):
         '''Returns the position of the feet in the same frame of the set_foot_positions() argument. Z position is the 
         bottom of the foot collision spheres. Return is of shape (4, 3).

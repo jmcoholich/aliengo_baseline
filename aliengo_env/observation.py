@@ -3,13 +3,6 @@ import os
 import time
 import numpy as np
 
-from collections import OrderedDict
-
-"""
-Contains the classes for observations and actions that allow the construction of different combinations of 
-observation and action spaces, as specified in the yaml file. 
-"""
-
 
 class Observation():
     def __init__(self, parts, quadruped):
@@ -26,7 +19,9 @@ class Observation():
                 'base_roll': self.get_base_roll,
                 'base_pitch': self.get_base_pitch,
                 'base_yaw': self.get_base_yaw,
-                'trajectory_generator_phases': self.get_tg_phases}
+                'trajectory_generator_phases': self.get_tg_phases,
+                'current_footstep_foot': self.get_current_foot,
+                'next_footstep_distance': self.get_next_footstep_distance}
         self.lengths = {'joint_torques': 12, 
                 'joint_positions': 12, 
                 'joint_velocities': 12, 
@@ -34,7 +29,9 @@ class Observation():
                 'base_roll': 1,
                 'base_pitch': 1,
                 'base_yaw': 1,
-                'trajectory_generator_phases': 8}
+                'trajectory_generator_phases': 8,
+                'current_footstep_foot': 1,
+                'next_footstep_distance': 3}
         assert all(part in self.handles.keys() for part in parts)
         self.parts.sort() # to insure that simply passing the parts in a different order doesn't specify a different env
 
@@ -70,33 +67,14 @@ class Observation():
     def get_tg_phases(self):
         return np.concatenate((np.sin(self.quadruped.phases), np.cos(self.quadruped.phases)))
 
+    def get_current_foot(self):
+        return self.quadruped.footstep_generator.current_footstep%4
+
+    def get_next_footstep_distance(self):
+        return self.quadruped.footstep_generator.get_current_footstep_distance()
+
     def __call__(self):
         """Gets observation and returns it. """
         # obs = np.zeros(self.obs_len)
         obs = np.concatenate([self.handles[part]() for part in self.parts])
         return obs
-
-
-class Action():
-    def __init__(self, action_space, quadruped):
-        """Parts is a dict where the keys are parts of the action space, and the values are dicts with keys for upper bound
-        and lower bound. """
-
-        assert isinstance(action_space, dict) # {name_of_space: dict of parameters}
-        assert len(action_space) == 1
-        self.action_space = action_space
-        self.quadruped = quadruped
-        self.allowed = {'Iscen_PMTG': self.quadruped.iscen_pmtg, 
-                        'joint_positions': self.quadruped.set_joint_position_targets}
-        self.action_lengths = {'Iscen_PMTG': 15, 
-                                'joint_positions': 12}
-        assert list(self.action_space)[0] in self.allowed.keys()
-        self.action_function = self.allowed[list(self.action_space)[0]]
-
-        self.action_lb = -np.ones(self.action_lengths[list(self.action_space)[0]]) 
-        self.action_ub = np.ones(self.action_lengths[list(self.action_space)[0]])
-
-
-    def __call__(self, action, time):
-        self.action_function(action, time=time, params=list(self.action_space.values())[0])
-        

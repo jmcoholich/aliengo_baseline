@@ -12,7 +12,9 @@ from . import aliengo_quadruped
 from pybullet_utils import bullet_client as bc
 
 
-from .modular_obs_and_act import Observation, Action
+from .action import Action
+from .observation import Observation
+from .termination import Termination
 from .obstacles.hills import Hills
 from .obstacles.steps import Steps  
 from .obstacles.stepping_stones import SteppingStones
@@ -22,12 +24,13 @@ from .utils import DummyObstacle
 
 class AliengoEnv(gym.Env):
     def __init__(self, 
+                    termination_conditions,
                     render=False, 
                     # env_mode='pmtg',
                     apply_perturb=False,
                     avg_time_per_perturb=5.0, # seconds
                     action_repeat=4,
-                    timeout=60.0, # number of seconds to timeout after
+                    # timeout=60.0, # number of seconds to timeout after
                     vis=False,
                     observation_parts=['joint_torques', 'joint_positions', 'joint_velocities', 'IMU'],
                     action_space=['joint_positions'],
@@ -65,7 +68,7 @@ class AliengoEnv(gym.Env):
         self.client.setGravity(0,0,-9.8)
         self.client.setRealTimeSimulation(False) # setting this to True messes with things
         self.client.setTimeStep(1/240.0)
-        
+
         self.observe = Observation(observation_parts, self.quadruped)
         self.observation_space = spaces.Box(
             low=self.observe.observation_lb,
@@ -90,6 +93,8 @@ class AliengoEnv(gym.Env):
             self.obstacles = DummyObstacle()
 
         self.reward_func = RewardFunction(self.client, reward_parts, self.quadruped)
+
+        self.termination_func = Termination(termination_conditions, self.obstacles)
             
 
     def generate_disturbances(self):
@@ -127,7 +132,7 @@ class AliengoEnv(gym.Env):
         obs = self.observe()
 
         info = {}
-        done, termination_dict = self.is_state_terminal() # this must come after self._update_state()
+        done, termination_dict = self.termination_func() # this must come after self._update_state()
         info.update(termination_dict) # termination_dict is an empty dict if not done
 
         rew, rew_dict = self.reward_func()
@@ -185,15 +190,15 @@ class AliengoEnv(gym.Env):
         return self.quadruped.render(mode=mode, client=client)
 
 
-    def is_state_terminal(self, flipping_bounds=[np.pi/2., np.pi/4., np.pi/4.], height_lb=0.23, height_ub=0.8):
-        quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=flipping_bounds,
-                                                                            height_lb=height_lb,
-                                                                            height_ub=height_ub)
-        timeout = (self.eps_step_counter >= self.eps_timeout) 
-        if timeout:
-            termination_dict['TimeLimit.truncated'] = True
-        done = quadruped_done or timeout
-        return done, termination_dict
+    # def is_state_terminal(self, flipping_bounds=[np.pi/2., np.pi/4., np.pi/4.], height_lb=0.23, height_ub=0.8):
+    #     quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=flipping_bounds,
+    #                                                                         height_lb=height_lb,
+    #                                                                         height_ub=height_ub)
+    #     timeout = (self.eps_step_counter >= self.eps_timeout) 
+    #     if timeout:
+    #         termination_dict['TimeLimit.truncated'] = True
+    #     done = quadruped_done or timeout
+    #     return done, termination_dict
             
 
 if __name__ == '__main__':
