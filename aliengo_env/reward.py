@@ -44,6 +44,6 @@ class RewardFunction():
         return k * term, term
 
     def velocity_towards_footstep(self, k, max_rewarded_vel):
-        term = self.quadruped.footstep_generator.velocity_towards_footstep(max_rewarded_vel)
+        term = min(self.quadruped.footstep_generator.velocity_towards_footstep(), max_rewarded_vel)
         return k * term, term
         

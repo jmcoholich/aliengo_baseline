@@ -173,7 +173,7 @@ render_func = get_render_func(env)
 # We need to use the same statistics for normalization as used in training
 filename = os.path.join('./trained_models', args.config + '.pt')
 if args.ws == -1:
-    actor_critic, ob_rms = torch.load(filename, args.device)
+    actor_critic, ob_rms, _, _ = torch.load(filename, args.device)
 else:
     import paramiko
     ssh_client = paramiko.SSHClient()
@@ -190,7 +190,7 @@ else:
     # ssh_client.exec_command('cd hutter_kostrikov; cd trained_models')
     sftp_client = ssh_client.open_sftp()
     remote_file = sftp_client.open(os.path.join('aliengo_baseline/', filename), 'rb')
-    actor_critic, ob_rms = torch.load(remote_file, map_location=args.device)
+    actor_critic, ob_rms, _, _ = torch.load(remote_file, map_location=args.device)
     print('Agent Loaded\n\n')
 
 

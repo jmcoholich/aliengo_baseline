@@ -56,7 +56,7 @@ class FootstepTargets:
         return self.footsteps[self.current_footstep] - pos
     
 
-    def velocity_towards_footstep(self, max_vel): #TODO test this
+    def velocity_towards_footstep(self): #TODO test this
         """Velocity of current foot towards footstep."""
 
         foot = self.footstep_idcs[self.current_footstep%4]
