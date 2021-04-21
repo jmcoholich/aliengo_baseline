@@ -44,7 +44,7 @@ class AliengoEnv(gym.Env):
         self.apply_perturb = apply_perturb
         self.avg_time_per_perturb = avg_time_per_perturb # average time in seconds between perturbations 
         self.n_hold_frames = action_repeat
-        self.eps_timeout = 240.0/self.n_hold_frames * timeout # number of steps to timeout after
+        # self.eps_timeout = 240.0/self.n_hold_frames * timeout # number of steps to timeout after
         # if U[0, 1) is less than this, perturb
         self.perturb_p = 1.0/(self.avg_time_per_perturb * 240.0) * self.n_hold_frames
         self.quadruped_kwargs = quadruped_kwargs
@@ -167,6 +167,8 @@ class AliengoEnv(gym.Env):
         Create new random terrain.
         '''
 
+        if hasattr(self.quadruped, 'footstep_generator'):
+            self.quadruped.footstep_generator.reset()
         self.eps_step_counter = 0
         self.t = 0.0
         ground_height = self.obstacles.reset()

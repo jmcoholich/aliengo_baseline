@@ -46,7 +46,7 @@ env_params:
   apply_perturb: False
   avg_time_per_perturb: 5.0 # seconds
   action_repeat: 4 # TODO change back to 6
-  timeout: 60.0 # number of seconds to timeout after
+  # timeout: 60.0 # number of seconds to timeout after
   # flat_ground: True # this is for getting terrain scan in privileged info for Aliengo 
   vis: False
   max_torque: 44.4 # from URDF 
@@ -78,3 +78,8 @@ env_params:
     # note: the reward bounds are on the measured value of the thing, not on the reward term
     forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
     joint_torques_l2: [-0.000005]
+
+  termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
+    height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
+    orientation_bounds: [0.5, 0.25, 0.25] # multiples of pi
+    timeout: [60] # seconds

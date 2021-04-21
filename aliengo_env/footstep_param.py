@@ -1,12 +1,13 @@
 """This is a class for generating footstep targets and keeping track of current footstep."""
 
+import numpy as np
 
-def FootstepTargets():
+class FootstepTargets:
     def __init__(self, params, quadruped):
         self.current_footstep = 0
         self.params = params
         self.quadruped = quadruped
-        self.generate_footsteps(self.params)
+        # self.generate_footsteps(self.params)
 
 
     def generate_footsteps(self, params):
@@ -62,9 +63,9 @@ def FootstepTargets():
         # velocity vector
         vel = np.array(self.quadruped.client.getLinkState(self.quadruped.quadruped, 
                                                             self.quadruped.foot_links[foot], 
-                                                            computeLinkVelocity=1.0)[6])
+                                                            computeLinkVelocity=1)[6])
         # position unit vector
-        pos = self.get_current_footstep_distance
+        pos = self.get_current_footstep_distance()
         pos_unit = pos/np.linalg.norm(pos)
         #dot product
         return (pos_unit * vel).sum()
@@ -84,9 +85,9 @@ def FootstepTargets():
 
     def is_timeout(self):
         assert self.current_footstep <= len(self.footsteps)
-        return self.current_footstep == self.footsteps
+        return self.current_footstep == len(self.footsteps)
 
-    def reset(self): #TODO add call for this in env
+    def reset(self):
         self.current_footstep = 0
         self.generate_footsteps(self.params)
         

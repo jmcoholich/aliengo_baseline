@@ -10,6 +10,8 @@ import time
 import warnings
 import sys
 
+from .footstep_param import FootstepTargets
+
 class AliengoQuadruped:
     def __init__(self, 
                     pybullet_client, 
@@ -161,48 +163,48 @@ class AliengoQuadruped:
         return np.concatenate((self.get_hutter_pmtg_observation(), self.privileged_info))
 
 
-    def footstep_param_obs(self):
+    # def footstep_param_obs(self):
 
-        if not self.state_is_updated:
-            raise ValueError('State has not been updated since last "get observation" call.')
+    #     if not self.state_is_updated:
+    #         raise ValueError('State has not been updated since last "get observation" call.')
 
-        obs = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation),
-                            self.base_vel, #TODO write a state estimator for this stuff, for actual robot
-                            self.base_avel,
-                            self.joint_positions,
-                            self.joint_velocities,
-                            self.applied_torques,
-                            self.foot_target_history[0].flatten(),
-                            # Not sure if these latter two are actually functioning as intended, since I'm keeping them
-                            # at the same resolution as the actions are given. But they at least help, so I'll include 
-                            # them.
-                            np.array(self.joint_pos_error_history).flatten(),
-                            np.array(self.joint_velocity_history).flatten()))  
+    #     obs = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation),
+    #                         self.base_vel, #TODO write a state estimator for this stuff, for actual robot
+    #                         self.base_avel,
+    #                         self.joint_positions,
+    #                         self.joint_velocities,
+    #                         self.applied_torques,
+    #                         self.foot_target_history[0].flatten(),
+    #                         # Not sure if these latter two are actually functioning as intended, since I'm keeping them
+    #                         # at the same resolution as the actions are given. But they at least help, so I'll include 
+    #                         # them.
+    #                         np.array(self.joint_pos_error_history).flatten(),
+    #                         np.array(self.joint_velocity_history).flatten()))  
 
-        self.state_is_updated = False
-        return obs
-
-
-    def footstep_param_obs_bounds(self):
-        return -np.ones(129 + 4), np.ones(129 + 4)
+    #     self.state_is_updated = False
+    #     return obs
 
 
-    def footstep_param_action(self, action):
-        foot_pos_com = action[:12].reshape(4, 3)
-        joint_pos_com = action[12:]
-
-        a = self.set_foot_positions(foot_pos_com, return_joint_targets=True)
-        # b = self._actions_to_positions(joint_pos_com)
-        b = joint_pos_com * self.position_range * 0.5
-        self.set_joint_position_targets(a + b, true_positions=True)
+    # def footstep_param_obs_bounds(self):
+    #     return -np.ones(129 + 4), np.ones(129 + 4)
 
 
-    def footstep_param_action_bounds(self):
-        lb = np.concatenate((np.array([-0.25, -0.2, -0.55] * 4),
-                            -np.ones(12) * 0.1))
-        ub = np.concatenate((np.array([0.25, 0.2, -0.2] * 4),
-                            np.ones(12) * 0.1))
-        return lb, ub
+    # def footstep_param_action(self, action):
+    #     foot_pos_com = action[:12].reshape(4, 3)
+    #     joint_pos_com = action[12:]
+
+    #     a = self.set_foot_positions(foot_pos_com, return_joint_targets=True)
+    #     # b = self._actions_to_positions(joint_pos_com)
+    #     b = joint_pos_com * self.position_range * 0.5
+    #     self.set_joint_position_targets(a + b, true_positions=True)
+
+
+    # def footstep_param_action_bounds(self):
+    #     lb = np.concatenate((np.array([-0.25, -0.2, -0.55] * 4),
+    #                         -np.ones(12) * 0.1))
+    #     ub = np.concatenate((np.array([0.25, 0.2, -0.2] * 4),
+    #                         np.ones(12) * 0.1))
+    #     return lb, ub
 
 
     def update_state(self, flat_ground, fake_client=None, update_priv_info=True):
@@ -283,175 +285,175 @@ class AliengoQuadruped:
         return rew/4.0
 
 
-    def pmtg_reward(self):
-        ''' 
-        Returns the reward function specified in S4 here: 
-        https://robotics.sciencemag.org/content/robotics/suppl/2020/10/19/5.47.eabc5986.DC1/abc5986_SM.pdf 
-        - however, just reward fwd movement, no angular velocity reward bc command direction (+x) never changes
-        - interestingly, all the reward functions are wrapped in an exponential function, so the agent gets
-        exponentially increasing rewards as it gets better (up to a threshold)
+    # def pmtg_reward(self):
+    #     ''' 
+    #     Returns the reward function specified in S4 here: 
+    #     https://robotics.sciencemag.org/content/robotics/suppl/2020/10/19/5.47.eabc5986.DC1/abc5986_SM.pdf 
+    #     - however, just reward fwd movement, no angular velocity reward bc command direction (+x) never changes
+    #     - interestingly, all the reward functions are wrapped in an exponential function, so the agent gets
+    #     exponentially increasing rewards as it gets better (up to a threshold)
 
-        TODO structure code here and in environments such that I avoid repeated pybullet function calls. Perhaps this
-        function can eventually return pmtg reward AND observation. (or write another function that calls this one 
-        to do that)
+    #     TODO structure code here and in environments such that I avoid repeated pybullet function calls. Perhaps this
+    #     function can eventually return pmtg reward AND observation. (or write another function that calls this one 
+    #     to do that)
         
-        Clipping lienar velocity to 1.8 based on: 
-         "...maximum walking speed exceeds 1.8 m/s" https://www.unitree.com/products/aliengo
-        '''
+    #     Clipping lienar velocity to 1.8 based on: 
+    #      "...maximum walking speed exceeds 1.8 m/s" https://www.unitree.com/products/aliengo
+    #     '''
         
-        speed_treshold = 0.5 # m/s
-        base_vel, base_avel = self.client.getBaseVelocity(self.quadruped)
-        lin_vel_rew = np.exp(-2.0 * (base_vel[0] - speed_treshold) * (base_vel[0] - speed_treshold)) \
-                                                                                if base_vel[0] < speed_treshold else 1.0
+    #     speed_treshold = 0.5 # m/s
+    #     base_vel, base_avel = self.client.getBaseVelocity(self.quadruped)
+    #     lin_vel_rew = np.exp(-2.0 * (base_vel[0] - speed_treshold) * (base_vel[0] - speed_treshold)) \
+    #                                                                             if base_vel[0] < speed_treshold else 1.0
 
-        # give reward if we are pointed the right direction
-        _, _, yaw = self.client.getEulerFromQuaternion(self.base_orientation)
-        angular_rew = np.exp(-1.5 * abs(yaw)) # if yaw is zero this is one. 
+    #     # give reward if we are pointed the right direction
+    #     _, _, yaw = self.client.getEulerFromQuaternion(self.base_orientation)
+    #     angular_rew = np.exp(-1.5 * abs(yaw)) # if yaw is zero this is one. 
 
-        base_motion_rew = np.exp(-1.5 * (base_vel[1] * base_vel[1])) + \
-                                            np.exp(-1.5 * (base_avel[0] * base_avel[0] + base_avel[1] * base_avel[1]))
+    #     base_motion_rew = np.exp(-1.5 * (base_vel[1] * base_vel[1])) + \
+    #                                         np.exp(-1.5 * (base_avel[0] * base_avel[0] + base_avel[1] * base_avel[1]))
 
-        foot_clearance_rew = self._foot_clearance_rew()
+    #     foot_clearance_rew = self._foot_clearance_rew()
 
-        body_collision_rew = -(self.is_non_foot_ground_contact() + self.self_collision())
+    #     body_collision_rew = -(self.is_non_foot_ground_contact() + self.self_collision())
 
-        target_smoothness_rew = - np.linalg.norm(self.foot_target_history[0] - 2 * self.foot_target_history[1] + \
-                                                                                            self.foot_target_history[2])
+    #     target_smoothness_rew = - np.linalg.norm(self.foot_target_history[0] - 2 * self.foot_target_history[1] + \
+    #                                                                                         self.foot_target_history[2])
 
-        torque_rew = -np.linalg.norm(self.applied_torques, 1)
+    #     torque_rew = -np.linalg.norm(self.applied_torques, 1)
 
-        # knee_force_rew = -np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
-        # knee_force_ratio_rew = np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[0,2,4]]]).sum() /\
-        #                                                 np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
+    #     # knee_force_rew = -np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
+    #     # knee_force_ratio_rew = np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[0,2,4]]]).sum() /\
+    #     #                                                 np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
 
-        wide_step_rew = self._wide_step_rew()
+    #     wide_step_rew = self._wide_step_rew()
 
-        # rew_dict includes all the things I want to keep track of an average over an entire episode, to be logged
-        # add terms of reward function
-        rew_dict = {'lin_vel_rew': lin_vel_rew, 'base_motion_rew': base_motion_rew, 
-                        'body_collision_rew':body_collision_rew, 'target_smoothness_rew':target_smoothness_rew,
-                        'torque_rew':torque_rew, 'angular_rew': angular_rew, 'foot_clearance_rew': foot_clearance_rew,
-                        # 'knee_force_rew':knee_force_rew}
-                        # 'knee_force_ratio_rew':knee_force_ratio_rew}
-                        'wide_step_rew':wide_step_rew}
-        # other stuff to track
-        rew_dict['x_vel'] = self.base_vel[0]
+    #     # rew_dict includes all the things I want to keep track of an average over an entire episode, to be logged
+    #     # add terms of reward function
+    #     rew_dict = {'lin_vel_rew': lin_vel_rew, 'base_motion_rew': base_motion_rew, 
+    #                     'body_collision_rew':body_collision_rew, 'target_smoothness_rew':target_smoothness_rew,
+    #                     'torque_rew':torque_rew, 'angular_rew': angular_rew, 'foot_clearance_rew': foot_clearance_rew,
+    #                     # 'knee_force_rew':knee_force_rew}
+    #                     # 'knee_force_ratio_rew':knee_force_ratio_rew}
+    #                     'wide_step_rew':wide_step_rew}
+    #     # other stuff to track
+    #     rew_dict['x_vel'] = self.base_vel[0]
 
-        total_rew = 0.50 * lin_vel_rew + 0.05 * angular_rew + 0.10 * base_motion_rew + 1.00 * foot_clearance_rew \
-            + 0.20 * body_collision_rew + 0.30 * target_smoothness_rew + 2e-5 * torque_rew \
-            + 2.0 * wide_step_rew #0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew 
-        return total_rew, rew_dict
+    #     total_rew = 0.50 * lin_vel_rew + 0.05 * angular_rew + 0.10 * base_motion_rew + 1.00 * foot_clearance_rew \
+    #         + 0.20 * body_collision_rew + 0.30 * target_smoothness_rew + 2e-5 * torque_rew \
+    #         + 2.0 * wide_step_rew #0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew 
+    #     return total_rew, rew_dict
 
 
-    def trot_in_place_reward(self):
-        ''' 
-        A copy of the self.pmtg_reward() function, just with the forward rew replaced with a rew for staying still.
-        '''
+    # def trot_in_place_reward(self):
+    #     ''' 
+    #     A copy of the self.pmtg_reward() function, just with the forward rew replaced with a rew for staying still.
+    #     '''
         
-        speed_treshold = 0.0 # m/s
-        base_vel, base_avel = self.client.getBaseVelocity(self.quadruped)
-        lin_vel_rew = np.exp(-2.0 * (base_vel[0] - speed_treshold) * (base_vel[0] - speed_treshold)) 
+    #     speed_treshold = 0.0 # m/s
+    #     base_vel, base_avel = self.client.getBaseVelocity(self.quadruped)
+    #     lin_vel_rew = np.exp(-2.0 * (base_vel[0] - speed_treshold) * (base_vel[0] - speed_treshold)) 
 
-        # give reward if we are pointed the right direction
-        _, _, yaw = self.client.getEulerFromQuaternion(self.base_orientation)
-        angular_rew = np.exp(-1.5 * abs(yaw)) # if yaw is zero this is one. 
+    #     # give reward if we are pointed the right direction
+    #     _, _, yaw = self.client.getEulerFromQuaternion(self.base_orientation)
+    #     angular_rew = np.exp(-1.5 * abs(yaw)) # if yaw is zero this is one. 
 
-        base_motion_rew = np.exp(-1.5 * (base_vel[1] * base_vel[1])) + \
-                                            np.exp(-1.5 * (base_avel[0] * base_avel[0] + base_avel[1] * base_avel[1]))
+    #     base_motion_rew = np.exp(-1.5 * (base_vel[1] * base_vel[1])) + \
+    #                                         np.exp(-1.5 * (base_avel[0] * base_avel[0] + base_avel[1] * base_avel[1]))
 
-        foot_clearance_rew = self._foot_clearance_rew()
+    #     foot_clearance_rew = self._foot_clearance_rew()
 
-        body_collision_rew = -(self.is_non_foot_ground_contact() + self.self_collision())
+    #     body_collision_rew = -(self.is_non_foot_ground_contact() + self.self_collision())
 
-        target_smoothness_rew = - np.linalg.norm(self.foot_target_history[0] - 2 * self.foot_target_history[1] + \
-                                                                                            self.foot_target_history[2])
+    #     target_smoothness_rew = - np.linalg.norm(self.foot_target_history[0] - 2 * self.foot_target_history[1] + \
+    #                                                                                         self.foot_target_history[2])
 
-        torque_rew = -np.linalg.norm(self.applied_torques, 1)
+    #     torque_rew = -np.linalg.norm(self.applied_torques, 1)
 
-        # knee_force_rew = -np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
-        # knee_force_ratio_rew = np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[0,2,4]]]).sum() /\
-        #                                                 np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
+    #     # knee_force_rew = -np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
+    #     # knee_force_ratio_rew = np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[0,2,4]]]).sum() /\
+    #     #                                                 np.abs(self.reaction_forces[[[2],[5],[8],[11]],[[1,3,5]]]).sum()
 
-        wide_step_rew = self._wide_step_rew()
+    #     wide_step_rew = self._wide_step_rew()
 
-        # rew_dict includes all the things I want to keep track of an average over an entire episode, to be logged
-        # add terms of reward function
-        rew_dict = {'lin_vel_rew': lin_vel_rew, 'base_motion_rew': base_motion_rew, 
-                        'body_collision_rew':body_collision_rew, 'target_smoothness_rew':target_smoothness_rew,
-                        'torque_rew':torque_rew, 'angular_rew': angular_rew, 'foot_clearance_rew': foot_clearance_rew,
-                        # 'knee_force_rew':knee_force_rew}
-                        # 'knee_force_ratio_rew':knee_force_ratio_rew}
-                        'wide_step_rew':wide_step_rew}
-        # other stuff to track
-        rew_dict['x_vel'] = self.base_vel[0]
+    #     # rew_dict includes all the things I want to keep track of an average over an entire episode, to be logged
+    #     # add terms of reward function
+    #     rew_dict = {'lin_vel_rew': lin_vel_rew, 'base_motion_rew': base_motion_rew, 
+    #                     'body_collision_rew':body_collision_rew, 'target_smoothness_rew':target_smoothness_rew,
+    #                     'torque_rew':torque_rew, 'angular_rew': angular_rew, 'foot_clearance_rew': foot_clearance_rew,
+    #                     # 'knee_force_rew':knee_force_rew}
+    #                     # 'knee_force_ratio_rew':knee_force_ratio_rew}
+    #                     'wide_step_rew':wide_step_rew}
+    #     # other stuff to track
+    #     rew_dict['x_vel'] = self.base_vel[0]
 
-        total_rew = 0.50 * lin_vel_rew + 0.05 * angular_rew + 0.10 * base_motion_rew + 1.00 * foot_clearance_rew \
-                + 0.20 * body_collision_rew + 0.30 * target_smoothness_rew + 2e-5 * torque_rew \
-                + 2.0 * wide_step_rew # 0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew
-        return total_rew, rew_dict
-
-
-    def get_hutter_pmtg_observation(self, noisy=False):
-        '''This gets the variable o_t described on pg 8 second column of 
-        https://robotics.sciencemag.org/content/robotics/5/47/eabc5986.full.pdf
-        This observation is concatenated to the privledged information and used as input to the teacher policy. The 
-        student policy will only have access to this information. '''
-
-        if not self.state_is_updated:
-            raise ValueError('State has not been updated since last "get observation" call.')
-        obs = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation),
-                            self.base_vel, #TODO write a state estimator for this stuff, for actual robot
-                            self.base_avel,
-                            self.joint_positions,
-                            self.joint_velocities,
-                            np.sin(self.phases),
-                            np.cos(self.phases),
-                            self.f_i,
-                            self.foot_target_history[0].flatten(),
-                            # Not sure if these latter two are actually functioning as intended, since I'm keeping them
-                            # at the same resolution as the actions are given. But they at least help, so I'll include 
-                            # them.
-                            np.array(self.joint_pos_error_history).flatten(),
-                            np.array(self.joint_velocity_history).flatten())) 
-
-        if noisy:
-            raise NotImplementedError
-        self.state_is_updated = False
-        return obs
+    #     total_rew = 0.50 * lin_vel_rew + 0.05 * angular_rew + 0.10 * base_motion_rew + 1.00 * foot_clearance_rew \
+    #             + 0.20 * body_collision_rew + 0.30 * target_smoothness_rew + 2e-5 * torque_rew \
+    #             + 2.0 * wide_step_rew # 0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew
+    #     return total_rew, rew_dict
 
 
-    def get_hutter_pmtg_observation_bounds(self):
+    # def get_hutter_pmtg_observation(self, noisy=False):
+    #     '''This gets the variable o_t described on pg 8 second column of 
+    #     https://robotics.sciencemag.org/content/robotics/5/47/eabc5986.full.pdf
+    #     This observation is concatenated to the privledged information and used as input to the teacher policy. The 
+    #     student policy will only have access to this information. '''
+
+    #     if not self.state_is_updated:
+    #         raise ValueError('State has not been updated since last "get observation" call.')
+    #     obs = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation),
+    #                         self.base_vel, #TODO write a state estimator for this stuff, for actual robot
+    #                         self.base_avel,
+    #                         self.joint_positions,
+    #                         self.joint_velocities,
+    #                         np.sin(self.phases),
+    #                         np.cos(self.phases),
+    #                         self.f_i,
+    #                         self.foot_target_history[0].flatten(),
+    #                         # Not sure if these latter two are actually functioning as intended, since I'm keeping them
+    #                         # at the same resolution as the actions are given. But they at least help, so I'll include 
+    #                         # them.
+    #                         np.array(self.joint_pos_error_history).flatten(),
+    #                         np.array(self.joint_velocity_history).flatten())) 
+
+    #     if noisy:
+    #         raise NotImplementedError
+    #     self.state_is_updated = False
+    #     return obs
+
+
+    # def get_hutter_pmtg_observation_bounds(self):
         
-        vel_lb, vel_ub = self.get_joint_velocity_bounds()
-        action_lb, action_ub = self.get_hutter_pmtg_action_bounds()
-        f_i_lb = action_lb[:4]
-        f_i_ub = action_ub[:4]
-        foot_cmd_lb = action_lb[4:] - 0.75
-        foot_cmd_ub = action_ub[4:] + 0.75
+    #     vel_lb, vel_ub = self.get_joint_velocity_bounds()
+    #     action_lb, action_ub = self.get_hutter_pmtg_action_bounds()
+    #     f_i_lb = action_lb[:4]
+    #     f_i_ub = action_ub[:4]
+    #     foot_cmd_lb = action_lb[4:] - 0.75
+    #     foot_cmd_ub = action_ub[4:] + 0.75
 
-        observation_lb = np.concatenate((np.array([-np.pi] * 3), # base orientation (Euler angles)
-                                        np.array([-1e3]*3), # base vel
-                                        np.array([-1e3]*3), # base avel
-                                        self.positions_lb, # joint position
-                                        vel_lb,
-                                        -np.ones(8), # sin and cos of phases
-                                        f_i_lb, # last f_i command
-                                        foot_cmd_lb, # last foot position command
-                                        np.tile(-(self.positions_ub - self.positions_lb),3), # joint pos error history
-                                        np.tile(vel_lb,3))) # joint velocity history
+    #     observation_lb = np.concatenate((np.array([-np.pi] * 3), # base orientation (Euler angles)
+    #                                     np.array([-1e3]*3), # base vel
+    #                                     np.array([-1e3]*3), # base avel
+    #                                     self.positions_lb, # joint position
+    #                                     vel_lb,
+    #                                     -np.ones(8), # sin and cos of phases
+    #                                     f_i_lb, # last f_i command
+    #                                     foot_cmd_lb, # last foot position command
+    #                                     np.tile(-(self.positions_ub - self.positions_lb),3), # joint pos error history
+    #                                     np.tile(vel_lb,3))) # joint velocity history
 
-        observation_ub = np.concatenate((np.array([np.pi] * 3), # base orientation (Euler angles)
-                                        np.array([1e3]*3), # base vel
-                                        np.array([1e3]*3), # base avel
-                                        self.positions_ub, # joint positions
-                                        vel_ub,
-                                        np.ones(8), # sin and cos of phases
-                                        f_i_ub, # last f_i command
-                                        foot_cmd_ub, # last foot position command
-                                        np.tile((self.positions_ub - self.positions_lb),3), # joint positions error 
-                                        np.tile(vel_ub,3))) # joint velocity history
+    #     observation_ub = np.concatenate((np.array([np.pi] * 3), # base orientation (Euler angles)
+    #                                     np.array([1e3]*3), # base vel
+    #                                     np.array([1e3]*3), # base avel
+    #                                     self.positions_ub, # joint positions
+    #                                     vel_ub,
+    #                                     np.ones(8), # sin and cos of phases
+    #                                     f_i_ub, # last f_i command
+    #                                     foot_cmd_ub, # last foot position command
+    #                                     np.tile((self.positions_ub - self.positions_lb),3), # joint positions error 
+    #                                     np.tile(vel_ub,3))) # joint velocity history
 
-        return observation_lb, observation_ub
+    #     return observation_lb, observation_ub
 
 
     # def get_pmtg_observation(self):
@@ -485,25 +487,25 @@ class AliengoQuadruped:
     #     return self.get_pmtg_action_bounds()
 
 
-    def get_pmtg_action_bounds(self): 
-        # 17 dim action space
+    # def get_pmtg_action_bounds(self): 
+    #     # 17 dim action space
 
-        #  def set_trajectory_parameters(self, t, f=2.00, step_height=0.2, step_bottom=-0.45, lateral_offset=0.075,
-        #         x_offset=0.02109375, step_len=0.2, residuals=np.zeros(12) ):
-        # residuals are in true joint positions space, not normalized
+    #     #  def set_trajectory_parameters(self, t, f=2.00, step_height=0.2, step_bottom=-0.45, lateral_offset=0.075,
+    #     #         x_offset=0.02109375, step_len=0.2, residuals=np.zeros(12) ):
+    #     # residuals are in true joint positions space, not normalized
 
 
-        # Most Recent
-        lb = np.concatenate((np.array([0.75, 0.075, -0.5, 0.07, -0.05, 0.05]), -np.ones(12) * np.pi/16.0 ))
-        ub = np.concatenate((np.array([1.5, 0.20, -0.35, 0.10, 0.05, 0.1]), np.ones(12) * np.pi/16.0 ))
+    #     # Most Recent
+    #     lb = np.concatenate((np.array([0.75, 0.075, -0.5, 0.07, -0.05, 0.05]), -np.ones(12) * np.pi/16.0 ))
+    #     ub = np.concatenate((np.array([1.5, 0.20, -0.35, 0.10, 0.05, 0.1]), np.ones(12) * np.pi/16.0 ))
 
-        # lb = np.concatenate((np.array([1.25, 0.075, -0.5, 0.04, -0.05, 0.05]), -np.ones(12) * np.pi/16.0 ))
-        # ub = np.concatenate((np.array([2.25, 0.25, -0.35, 0.125, 0.05, 0.2]), np.ones(12) * np.pi/16.0 ))
+    #     # lb = np.concatenate((np.array([1.25, 0.075, -0.5, 0.04, -0.05, 0.05]), -np.ones(12) * np.pi/16.0 ))
+    #     # ub = np.concatenate((np.array([2.25, 0.25, -0.35, 0.125, 0.05, 0.2]), np.ones(12) * np.pi/16.0 ))
 
-        # Oldest
-        # lb = np.concatenate((np.array([0.0, 0.05, -0.6, 0.025, -0.1, 0.00]), -np.ones(12) * np.pi/8.0 ))
-        # ub = np.concatenate((np.array([3.0, 0.3, -0.3, 0.125, 0.1, 0.4]), np.ones(12) * np.pi/8.0 ))
-        return lb, ub
+    #     # Oldest
+    #     # lb = np.concatenate((np.array([0.0, 0.05, -0.6, 0.025, -0.1, 0.00]), -np.ones(12) * np.pi/8.0 ))
+    #     # ub = np.concatenate((np.array([3.0, 0.3, -0.3, 0.125, 0.1, 0.4]), np.ones(12) * np.pi/8.0 ))
+    #     return lb, ub
 
 
     def pmtg_action(self, time, action): #TODO does it make sense to call this every stepSimulation? 
@@ -513,15 +515,15 @@ class AliengoQuadruped:
                                         action[6:])
 
 
-    def get_pmtg_observation_bounds(self):
-        # same as regular flat observation, just with the sin and cos of trajectory generator phases added on.
-        return -np.ones(58), np.ones(58)
+    # def get_pmtg_observation_bounds(self):
+    #     # same as regular flat observation, just with the sin and cos of trajectory generator phases added on.
+    #     return -np.ones(58), np.ones(58)
 
 
-    def get_pmtg_observation(self):
-        obs = self.get_observation()
-        obs = np.concatenate((obs, np.sin(self.phases), np.cos(self.phases)))
-        return obs
+    # def get_pmtg_observation(self):
+    #     obs = self.get_observation()
+    #     obs = np.concatenate((obs, np.sin(self.phases), np.cos(self.phases)))
+    #     return obs
 
 
 

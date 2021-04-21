@@ -1,8 +1,9 @@
 import numpy as np
 from collections import OrderedDict
-from utils import DummyObstacle
+from .utils import DummyObstacle
+import pybullet as p
 
-class Termination():
+class Termination:
     def __init__(self, termination_conditions, obstacle, quadruped, env):
         """
         There are two types of termination conditions
@@ -26,7 +27,7 @@ class Termination():
         termination_dict = {}
         # check type 2 conditions
         if not isinstance(self.obstacle, DummyObstacle):
-            done, reason = self.obstacle.bounds_termination():
+            done, reason = self.obstacle.bounds_termination()
             if done:
                 termination_dict['termination_reason'] = reason
                 return True, termination_dict
@@ -48,7 +49,7 @@ class Termination():
                 return True, termination_dict
 
         # check type 4 conditions (timeout)
-        if self.quadruped.footstep_param is not None:
+        if hasattr(self.quadruped, 'footstep_generator'):
             if self.quadruped.footstep_generator.is_timeout():
                 termination_dict['TimeLimit.truncated'] = True
                 return True, termination_dict
@@ -68,16 +69,17 @@ class Termination():
         output = OrderedDict()
         contains_timeout = 'timeout' in termination_conditions.keys()
         keys = list(termination_conditions)
-        if contains_timeout: keys.pop('timeout')
-        if contains_obstacle: keys.pop('height_bounds')
+        if contains_timeout: keys.remove('timeout')
+        if contains_obstacle: keys.remove('height_bounds')
         keys.sort()
         for key in keys:
             output[key] = termination_conditions[key]
         if contains_timeout: output['timeout'] = termination_conditions['timeout']
         return output
     
+
     def height_bounds(self, lb, ub):
-        return self.quadruped.base_position <= lb or self.quadruped.base_position >= lb
+        return self.quadruped.base_position[2] <= lb or self.quadruped.base_position[2] >= ub
 
     def orientation_bounds(self, x, y, z):
         euler_angles = np.array(p.getEulerFromQuaternion(self.quadruped.base_orientation))

@@ -68,7 +68,7 @@ class Observation():
         return np.concatenate((np.sin(self.quadruped.phases), np.cos(self.quadruped.phases)))
 
     def get_current_foot(self):
-        return self.quadruped.footstep_generator.current_footstep%4
+        return np.array([self.quadruped.footstep_generator.current_footstep%4])
 
     def get_next_footstep_distance(self):
         return self.quadruped.footstep_generator.get_current_footstep_distance()
