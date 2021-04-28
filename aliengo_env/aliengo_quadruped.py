@@ -712,7 +712,7 @@ class AliengoQuadruped:
     def iscen_pmtg(self, action, time, params):  # TODO correct this!!!!!!!!!!!
         """
         The action should consist of amplitude, walking_height, frequency, plus 12 joint positions residuals,
-        all properly mapped.
+        all properly mapped to [-1, 1]
         """
 
         amplitude, walking_height, frequency, true_residuals = self._unpack_iscen_pmtg_args(action, params)
