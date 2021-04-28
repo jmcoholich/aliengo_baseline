@@ -3,13 +3,14 @@ from collections import OrderedDict
 from .utils import DummyObstacle
 import pybullet as p
 
+
 class Termination:
     def __init__(self, termination_conditions, obstacle, quadruped, env):
         """
         There are two types of termination conditions
         1. Ones passed through termination_conditions arg (included in self.all_conditions)
         2. Going out of bounds of a generated terrain
-        3. Termination based on reaching the end of the terrain 
+        3. Termination based on reaching the end of the terrain
         4. Termination based on reaching the last generated footstep
         """
         self.env = env
@@ -20,7 +21,6 @@ class Termination:
                                     'orientation_bounds': self.orientation_bounds,
                                     'timeout': self.timeout}
         assert all(part in self.type_one_conditions.keys() for part in self.termination_conditions.keys())
-
 
     def __call__(self):
 
@@ -35,12 +35,11 @@ class Termination:
         # check type 1 conditions
         for condition in self.termination_conditions.keys():
             if self.type_one_conditions[condition](*self.termination_conditions[condition]):
-                is_terminal = True
                 if condition == 'timeout':
                     termination_dict['TimeLimit.truncated'] = True
                 else:
                     termination_dict['termination_reason'] = condition
-                return True, termination_dict # stop checking conditions once something is terminal
+                return True, termination_dict  # stop checking conditions once something is terminal
 
         # check type 3 conditions (these are all considered timeouts)
         if not isinstance(self.obstacle, DummyObstacle):
@@ -55,12 +54,10 @@ class Termination:
                 return True, termination_dict
 
         return False, termination_dict
-    
 
     def _sort_term_conds(self, termination_conditions, obstacle):
         """ Sort termination conditions then add them to self.termination_conditions, so that the conditions are checked
-        in a determinisitic order (despite how they appear in the yaml), but with timeout checked last. 
-        
+        in a determinisitic order (despite how they appear in the yaml), but with timeout checked last.
         Also,removes the height_bounds termination condition IF an actual obstacle is passed.
         """
 
@@ -69,14 +66,16 @@ class Termination:
         output = OrderedDict()
         contains_timeout = 'timeout' in termination_conditions.keys()
         keys = list(termination_conditions)
-        if contains_timeout: keys.remove('timeout')
-        if contains_obstacle: keys.remove('height_bounds')
+        if contains_timeout:
+            keys.remove('timeout')
+        if contains_obstacle:
+            keys.remove('height_bounds')
         keys.sort()
         for key in keys:
             output[key] = termination_conditions[key]
-        if contains_timeout: output['timeout'] = termination_conditions['timeout']
+        if contains_timeout:
+            output['timeout'] = termination_conditions['timeout']
         return output
-    
 
     def height_bounds(self, lb, ub):
         return self.quadruped.base_position[2] <= lb or self.quadruped.base_position[2] >= ub
