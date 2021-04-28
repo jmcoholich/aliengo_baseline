@@ -72,7 +72,7 @@ def main(args, config_yaml_file, resume=False):
     utils.cleanup_log_dir(eval_log_dir)
 
     if args.num_torch_threads:
-        torch.set_num_threads(args.num_torch_threads) # TODO is there any reason to set this to one? 
+        torch.set_num_threads(args.num_torch_threads)  # TODO is there any reason to set this to one? 
     device = torch.device("cuda:" + str(args.gpu_idx) if args.cuda else "cpu")
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
@@ -91,7 +91,7 @@ def main(args, config_yaml_file, resume=False):
         actor_critic = Policy(
             envs.observation_space.shape,
             envs.action_space,
-            base_kwargs={'recurrent': args.recurrent_policy})
+            base_kwargs={'recurrent': args.recurrent_policy, 'hidden_size': args.hidden_size})
     actor_critic.to(device)
 
     if args.algo == 'a2c':
