@@ -20,7 +20,7 @@ max_grad_norm: 0.5
 seed: 1
 cuda_deterministic: False
 num_processes: 20
-num_steps: 600
+num_steps: 60
 ppo_epoch: 10
 num_mini_batch: 32
 clip_param: 0.2
