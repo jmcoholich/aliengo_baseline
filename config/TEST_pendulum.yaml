@@ -2,7 +2,9 @@
 wandb_project: TEST_PENDULUM
 log_interval: 1
 save_interval: 1
+eval_interval: null
 wandb_log_interval: 1
+log_dir: /tmp/gym/
 
 # RL parameters
 algo: ppo
@@ -22,10 +24,8 @@ num_steps: 125
 ppo_epoch: 10
 num_mini_batch: 32
 clip_param: 0.2
-eval_interval: null
 num_env_steps: 200_000
 env_name: Pendulum-v0
-log_dir: /tmp/gym/
 cuda: False
 use_proper_time_limits: True
 recurrent_policy: False
