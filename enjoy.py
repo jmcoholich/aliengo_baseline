@@ -233,12 +233,7 @@ else:
     loop_time = 0.01
 
 episode_rew = 0.0
-initial_obs = obs
-import matplotlib.pyplot as plt
-rews = []
-obs = []
 while True:
-for i in range(100):
     time.sleep(loop_time)
     with torch.no_grad():
         value, action, _, recurrent_hidden_states, _ = actor_critic.act(
@@ -247,25 +242,13 @@ for i in range(100):
     # Obser reward and next obs
     if 'Box' in str(env.action_space):
         obs, reward, done, info = env.step(action)
-        # print(abs(action - torch.from_numpy(env.action_space.high)).mean())
-        # print(abs(action - torch.from_numpy(env.action_space.low)).mean())
-        # print(action)
-        # print(obs)
-        # print(torch.from_numpy(env.action_space.high))
-        # print()
 
     else:
         obs, reward, done, info = env.step(action)
     episode_rew += reward
-    if initial_obs is None:
-        initial_obs = obs
     if done:
-        print('Initial observation: {}'.format(initial_obs))
-        print('Episode reward: {}'.format(episode_rew))
-        print()
-        rew
+        print('Episode reward: {}'.format(episode_rew.item()))
         episode_rew = 0.0
-        initial_obs = None
     masks.fill_(0.0 if done else 1.0)
 
     if yaml_args.env_name.find('Bullet') > -1:
