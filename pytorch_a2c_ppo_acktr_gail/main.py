@@ -24,8 +24,8 @@ from .evaluation import evaluate
 
 class WandbLogWrapper:
     """
-    This class is a wrapper for the wandb object. It averages batches of log_interval size until calling wandb.log(). 
-    This is to save disk space in the wandb dir and speed up the loading of wandb pages. 
+    This class is a wrapper for the wandb object. It averages batches of log_interval size until calling wandb.log().
+    This is to save disk space in the wandb dir and speed up the loading of wandb pages.
     NOTE: This does not handle the logging of strings like termination reason, etc.
     """
 
@@ -55,7 +55,7 @@ def main(args, config_yaml_file, resume=False):
 
     if resume:
         f = os.path.join('./trained_models', config_yaml_file + '.pt')
-        actor_critic, ob_rms, optimizer_state_dict, training_info = torch.load(f, 'cpu')
+        actor_critic, obs_rms, optimizer_state_dict, training_info = torch.load(f, 'cpu')
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
 
@@ -72,17 +72,16 @@ def main(args, config_yaml_file, resume=False):
     utils.cleanup_log_dir(eval_log_dir)
 
     if args.num_torch_threads:
-        torch.set_num_threads(args.num_torch_threads)  # TODO is there any reason to set this to one? 
+        torch.set_num_threads(args.num_torch_threads)  # TODO is there any reason to set this to one?
     device = torch.device("cuda:" + str(args.gpu_idx) if args.cuda else "cpu")
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False, env_params=args.env_params)
-    
     if resume:
         vec_norm = get_vec_normalize(envs)
         if vec_norm is not None:
             vec_norm.eval()
-            vec_norm.ob_rms = ob_rms
+            vec_norm.obs_rms = obs_rms
 
     action_ub = torch.from_numpy(envs.action_space.high).to(device)
     action_lb = torch.from_numpy(envs.action_space.low).to(device)
@@ -117,7 +116,7 @@ def main(args, config_yaml_file, resume=False):
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(
             actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
-    if resume: # load the old optimizer state dict 
+    if resume: # load the old optimizer state dict
         agent.optimizer.load_state_dict(optimizer_state_dict)
 
 
@@ -129,7 +128,7 @@ def main(args, config_yaml_file, resume=False):
         file_name = os.path.join(
             args.gail_experts_dir, "trajs_{}.pt".format(
                 args.env_name.split('-')[0].lower()))
-        
+
         expert_dataset = gail.ExpertDataset(
             file_name, num_trajectories=4, subsample_frequency=20)
         drop_last = len(expert_dataset) > args.gail_batch_size
@@ -155,7 +154,7 @@ def main(args, config_yaml_file, resume=False):
     start = time.time()
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
-    
+
     if resume:
         start_idx = training_info["update_number"]
         total_env_steps = training_info["update_number"] * args.num_steps * args.num_processes
@@ -188,19 +187,19 @@ def main(args, config_yaml_file, resume=False):
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
                     wandb_info = {}
-                    total_env_steps += info['episode']['l'] 
+                    total_env_steps += info['episode']['l']
                     wandb_info['hours_wall_time'] = info['episode']['t']/3600.
-                    wandb_info['episode_length']  = info['episode']['l'] 
+                    wandb_info['episode_length']  = info['episode']['l']
                     wandb_info['episode_reward']  = info['episode']['r']
-                    wandb_info['num_env_samples'] = total_env_steps 
+                    wandb_info['num_env_samples'] = total_env_steps
                     wandb_info['average_entropy']  = mean_entropies
-                    # these keys are already taken case of elsewhere 
+                    # these keys are already taken case of elsewhere
                     # TODO eventually log a moving average of percentage/frequency of different termination conditions
                     blacklisted_keys = {'episode', 'bad_transition', 'termination_reason'} # don't log these
                     for key_of_logged_item, value_of_logged_item in info.items():
                         if key_of_logged_item not in blacklisted_keys:
                             wandb_info[key_of_logged_item] = value_of_logged_item
-                    entropies_counter = 0.0 
+                    entropies_counter = 0.0
                     wandb_wrapper.log(wandb_info)
 
 

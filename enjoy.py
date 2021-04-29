@@ -25,7 +25,6 @@ import time
 import pybullet as p
 import cv2
 
-
 from train import get_params
 
 
@@ -43,9 +42,9 @@ def add_frame(render_func, img_array):
     img = render_func('rgb_array')
     height, _, _ = img.shape
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    img = cv2.putText(np.float32(img), ('%f'% VIDEO_SPEED).rstrip('0') + 'x Speed'  , (1, height - 40), 
+    img = cv2.putText(np.float32(img), ('%f'% VIDEO_SPEED).rstrip('0') + 'x Speed'  , (1, height - 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.375, (0,0,0))
-    img = cv2.putText(np.float32(img), '%d FPS' % FPS , (1, height - 20), 
+    img = cv2.putText(np.float32(img), '%d FPS' % FPS , (1, height - 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.375, (0,0,0))
     img = np.uint8(img)
     img_array.append(img)
@@ -57,7 +56,7 @@ def write_video(img_array, env_name, fps, args):
     size = (width, height)
     if not os.path.exists('videos/' + env_name):
         os.makedirs('videos/' + env_name)
-    
+
     filename = os.path.join('videos', env_name, str(args.seed) + '.avi' )
     print(filename)
     out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'XVID'), fps, size)
@@ -113,7 +112,7 @@ parser.add_argument(
     help='difficulty of the test_env from 0 to 1, easy to hard. Default 0.25')
 parser.add_argument(
     '--kp',
-    default=1.0, 
+    default=1.0,
     type=float)
 parser.add_argument(
     '--kd',
@@ -173,7 +172,7 @@ render_func = get_render_func(env)
 # We need to use the same statistics for normalization as used in training
 filename = os.path.join('./trained_models', args.config + '.pt')
 if args.ws == -1:
-    actor_critic, ob_rms, _, _ = torch.load(filename, args.device)
+    actor_critic, obs_rms, _, _ = torch.load(filename, args.device)
 else:
     import paramiko
     ssh_client = paramiko.SSHClient()
@@ -190,32 +189,32 @@ else:
     # ssh_client.exec_command('cd hutter_kostrikov; cd trained_models')
     sftp_client = ssh_client.open_sftp()
     remote_file = sftp_client.open(os.path.join('aliengo_baseline/', filename), 'rb')
-    actor_critic, ob_rms, _, _ = torch.load(remote_file, map_location=args.device)
+    actor_critic, obs_rms, _, _ = torch.load(remote_file, map_location=args.device)
     print('Agent Loaded\n\n')
 
 
     # # copy the file to local and then run instead
     # sftp_client.get(os.path.join('hutter_kostrikov/trained_models',filename), os.path.join('/home/jeremiah/hutter_kostrikov/trained_models',filename))
-    # actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, filename))
+    # actor_critic, obs_rms = torch.load(os.path.join(args.load_dir, filename))
 # actor_critic.to('cpu')
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
-    vec_norm.ob_rms = ob_rms
+    vec_norm.obs_rms = obs_rms
 
 recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)
 
 obs = env.reset()
+# TODO figure this shit out below
+# if render_func is not None:
+#     render_func('human')
 
-if render_func is not None:
-    render_func('human')
-
-    torsoId = -1
-    for i in range(p.getNumBodies()):
-        if (p.getBodyInfo(i)[0].decode() == "torso"):
-            torsoId = i
+#     torsoId = -1
+#     for i in range(p.getNumBodies()):
+#         if (p.getBodyInfo(i)[0].decode() == "torso"):
+#             torsoId = i
 
 if args.save_vid:
     assert 240.0%env.venv.venv.envs[0].n_hold_frames == 0
@@ -228,27 +227,34 @@ if args.save_vid:
     img_array = add_frame(render_func, img_array)
     total_rew = 0.0
 
+if yaml_args.env_name == 'aliengo':
+    loop_time = 1/240. * env.venv.venv.envs[0].n_hold_frames * 1.0/args.speed
+else:
+    loop_time = 0.01
 
+episode_rew = 0.0
 while True:
-    time.sleep(1/240. * env.venv.venv.envs[0].n_hold_frames * 1.0/args.speed)
+    time.sleep(loop_time)
     with torch.no_grad():
         value, action, _, recurrent_hidden_states, _ = actor_critic.act(
             obs, recurrent_hidden_states, masks, deterministic=args.deterministic)
 
     # Obser reward and next obs
-    if 'Box' in str(env.action_space):            
+    if 'Box' in str(env.action_space):
         obs, reward, done, info = env.step(action)
-        # print(abs(action - torch.from_numpy(env.action_space.high)).mean()) # TODO
+        # print(abs(action - torch.from_numpy(env.action_space.high)).mean())
         # print(abs(action - torch.from_numpy(env.action_space.low)).mean())
         # print(action)
         # print(obs)
         # print(torch.from_numpy(env.action_space.high))
         # print()
 
-
     else:
-        obs, reward, done, _ = env.step(action)
-
+        obs, reward, done, info = env.step(action)
+    episode_rew += reward
+    if done:
+        print('Episode reward: {}'.format(episode_rew))
+        episode_rew = 0.0
     masks.fill_(0.0 if done else 1.0)
 
     if yaml_args.env_name.find('Bullet') > -1:
@@ -260,14 +266,14 @@ while True:
 
     if render_func is not None:
         render_func('human')
-    
+
     if args.save_vid:
         img_array = add_frame(render_func, img_array)
         counter += 1
         total_rew += reward
-    
-    if args.save_vid and done: 
+
+    if args.save_vid and done:
         break
 
-
-if args.save_vid: write_video(img_array, yaml_args.env_name, FPS, args)
+if args.save_vid:
+    write_video(img_array, yaml_args.env_name, FPS, args)

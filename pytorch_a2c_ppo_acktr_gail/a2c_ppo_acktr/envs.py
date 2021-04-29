@@ -59,8 +59,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, env_params):
 
         if log_dir is not None:
             env = Monitor(env,
-                          os.path.join(log_dir, str(rank)),
-                          allow_early_resets=allow_early_resets)
+                        os.path.join(log_dir, str(rank)),
+                        allow_early_resets=allow_early_resets)
 
         if is_atari:
             if len(env.observation_space.shape) == 3:

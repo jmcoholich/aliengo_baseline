@@ -3,7 +3,7 @@ wandb_project: default
 gpu_idx: 0
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
-hidden_size: 2
+hidden_size: 32
 algo: ppo
 gail: False # do imitation learning with  gail
 gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
@@ -20,8 +20,8 @@ value_loss_coef: 0.5
 max_grad_norm: 0.5
 seed: 1
 cuda_deterministic: False
-num_processes: 20
-num_steps: 60
+num_processes: 16
+num_steps: 125
 ppo_epoch: 10
 num_mini_batch: 32
 clip_param: 0.2
@@ -29,14 +29,14 @@ log_interval: 1
 save_interval: 1
 eval_interval: null
 num_env_steps: 1_000_000
-env_name: aliengo
+env_name: Pendulum-v0
 wandb_log_interval: 1
 log_dir: /tmp/gym/
 # save_dir: ./trained_models/
 cuda: False
 use_proper_time_limits: True
 recurrent_policy: False
-use_linear_lr_decay: False
+use_linear_lr_decay: True
 num_torch_threads: null # null just means don't set anything.
 
 
