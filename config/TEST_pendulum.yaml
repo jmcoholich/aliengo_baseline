@@ -1,17 +1,14 @@
-# Added args
+# Logging and Saving
 wandb_project: TEST_PENDULUM
-gpu_idx: 0
+log_interval: 1
+save_interval: 1
+wandb_log_interval: 1
 
-# existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
-hidden_size: 32
+# RL parameters
 algo: ppo
-gail: False # do imitation learning with  gail
-gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
-gail_batch_size: 128
-gail_epoch: 5
+gpu_idx: 0
+hidden_size: 32
 lr: 3.0e-4
-eps: 1.0e-5 # RMSprop optimizer epsilon (default: 1e-5)
-alpha: 0.99 # RMSprop optimizer apha (default: 0.99)
 gamma: 0.99
 use_gae: True
 gae_lambda: 0.95
@@ -25,16 +22,12 @@ num_steps: 125
 ppo_epoch: 10
 num_mini_batch: 32
 clip_param: 0.2
-log_interval: 1
-save_interval: 1
 eval_interval: null
-num_env_steps: 1_000_000
+num_env_steps: 200_000
 env_name: Pendulum-v0
-wandb_log_interval: 1
 log_dir: /tmp/gym/
-# save_dir: ./trained_models/
 cuda: False
 use_proper_time_limits: True
 recurrent_policy: False
 use_linear_lr_decay: True
-num_torch_threads: null # null just means don't set anything.
+num_torch_threads: null
