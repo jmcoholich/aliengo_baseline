@@ -83,9 +83,6 @@ def main(args, config_yaml_file, resume=False):
             vec_norm.eval()
             vec_norm.obs_rms = obs_rms
 
-    action_ub = torch.from_numpy(envs.action_space.high).to(device)
-    action_lb = torch.from_numpy(envs.action_space.low).to(device)
-
     if not resume:
         actor_critic = Policy(
             envs.observation_space.shape,

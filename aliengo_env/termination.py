@@ -82,7 +82,7 @@ class Termination:
 
     def orientation_bounds(self, x, y, z):
         euler_angles = np.array(p.getEulerFromQuaternion(self.quadruped.base_orientation))
-        return (abs(euler_angles) > [x, y, z]).any()
+        return (abs(euler_angles) > np.array([x, y, z]) * np.pi).any()
 
     def timeout(self, n_seconds):
         return self.env.eps_step_counter >= 240.0/self.env.n_hold_frames * n_seconds

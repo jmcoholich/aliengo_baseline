@@ -26,6 +26,7 @@ class AliengoEnv(gym.Env):
     def __init__(
                 self,
                 termination_conditions,
+                stochastic_resets,
                 render=False,
                 # env_mode='pmtg',
                 apply_perturb=False,
@@ -44,6 +45,7 @@ class AliengoEnv(gym.Env):
                 **quadruped_kwargs
                 ):
         self.apply_perturb = apply_perturb
+        self.stochastic_resets = stochastic_resets
         self.avg_time_per_perturb = avg_time_per_perturb  # average time in seconds between perturbations
         self.n_hold_frames = action_repeat
         # self.eps_timeout = 240.0/self.n_hold_frames * timeout # number of steps to timeout after
@@ -155,7 +157,7 @@ class AliengoEnv(gym.Env):
         else:
             assert False
 
-    def reset(self, base_height=0.48, stochastic=True):  #TODO make it so that I apply the torque at every simulation step
+    def reset(self, base_height=0.48):  #TODO make it so that I apply the torque at every simulation step
         '''Resets the robot to a neutral standing position, knees slightly bent. The motor control command is to
         prevent the robot from jumping/falling on first user command.
 
@@ -171,7 +173,7 @@ class AliengoEnv(gym.Env):
         self.client.resetBasePositionAndOrientation(self.quadruped.quadruped,
                                             posObj=posObj,
                                             ornObj=[0,0,0,1.0])
-        reset_position = self.quadruped.generate_reset_joint_positions(stochastic=stochastic)
+        reset_position = self.quadruped.generate_reset_joint_positions(stochastic=self.stochastic_resets)
         for i in range(50): # to let the robot settle on the ground.
             self.quadruped.reset_joint_positions(reset_position)
             self.client.stepSimulation()

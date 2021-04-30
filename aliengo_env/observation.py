@@ -20,7 +20,9 @@ class Observation():
                         'trajectory_generator_phases': self.get_tg_phases,
                         'current_footstep_foot': self.get_current_foot,
                         'next_footstep_distance': self.get_next_footstep_distance,
-                        'noise': self.noise
+                        'noise': self.noise,
+                        'constant_zero': self.zero,
+                        'one_joint_only': self.one_joint_only
                         }
         self.lengths = {
                         'joint_torques': 12,
@@ -33,7 +35,9 @@ class Observation():
                         'trajectory_generator_phases': 8,
                         'current_footstep_foot': 1,
                         'next_footstep_distance': 3,
-                        'noise': 1  # this is arbitrary
+                        'noise': 1,  # this is arbitrary
+                        'constant_zero': 1,
+                        'one_joint_only': 1
                         }
         assert all(part in self.handles.keys() for part in parts)
         self.parts.sort() # to insure that simply passing the parts in a different order doesn't specify a different env
@@ -78,6 +82,12 @@ class Observation():
 
     def noise(self):
         return (np.random.random_sample(1) - 0.5) * 2.0
+
+    def zero(self):
+        return np.zeros(1)
+
+    def one_joint_only(self):
+        return self.quadruped.joint_positions[np.newaxis, 2]
 
     def __call__(self):
         """Gets observation and returns it. """
