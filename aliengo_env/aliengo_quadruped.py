@@ -207,7 +207,7 @@ class AliengoQuadruped:
     #     return lb, ub
 
 
-    def update_state(self, flat_ground, fake_client=None, update_priv_info=True):
+    def update_state(self, flat_ground, fake_client=None, update_priv_info=True):  # TODO get rid of this flatground shit
         '''Updates state of the quadruped. This should be called once per env.step() and once per env.reset().
         The state is not the same as the observation. Returns nothing.'''
 

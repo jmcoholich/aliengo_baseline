@@ -1,6 +1,6 @@
 class DummyObstacle():
     def __init__(self):
-        pass
+        self.ground_height = 0.0
 
     def reset(self):
         pass
