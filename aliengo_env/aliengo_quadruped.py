@@ -12,49 +12,58 @@ import sys
 
 from footstep_param import FootstepTargets
 
+
 class AliengoQuadruped:
-    def __init__(self,
-                    pybullet_client,
-                    max_torque=44.4, # from URDF
-                    kp=1.0,
-                    kd=1.0,
-                    fixed=False,
-                    fixed_position=[0,0,1.0],
-                    fixed_orientation=[0,0,0],
-                    vis=False,
-                    gait_type='trot',
-                    footstep_params=None):
-        # print('fixed_position received in Aliengo constructor', fixed_position)
-        if gait_type not in ['trot', 'walk']:
-            raise ValueError('Current gait must be of type "walk" or "trot".')
+    def __init__(
+        self,
+        pybullet_client,
+        max_torque=44.4,  # from URDF
+        kp=1.0,
+        kd=1.0,
+        vis=False,
+        footstep_params=None,
+        fixed=False,
+        fixed_position=None,  # leaving these here in case of debugging
+        fixed_orientation=None
+    ):
         self.max_torque = max_torque
         self.kp = kp
         self.kd = kd
         self.client = pybullet_client
         self.n_motors = 12
-        self.gait_type = gait_type
 
         # FR, FL, RR, RL
         self.foot_links = [5, 9, 13, 17]
         self.shin_links = [4, 8, 12, 16]
-        self.thigh_links =  [3, 7, 11, 15]
+        self.thigh_links = [3, 7, 11, 15]
         self.hip_links = [2, 6, 10, 14]
-        self.quadruped = self.load_urdf(fixed=fixed, fixed_position=fixed_position, fixed_orientation=fixed_orientation)
 
-        # indices are in order of [shoulder, hip, knee] for FR, FL, RR, RL. The skipped numbers are fixed joints
-        # in the URDF
+        self.quadruped = self.load_urdf(
+            fixed=fixed,
+            fixed_position=fixed_position,
+            fixed_orientation=fixed_orientation)
+
+        # indices are in order of [shoulder, hip, knee] for FR, FL, RR, RL.
+        # The skipped numbers are fixed joints in the URDF
         self.motor_joint_indices = [2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16]
         self.hip_joints = [2, 6, 10, 14]
         self.thigh_joints = [3, 7, 11, 15]
         self.knee_joints = [4, 8, 12, 16]
-        self.num_links = 18 # 19 links if the "base" link is included (massless, 0.001 cube)
-        self.positions_lb, self.positions_ub, self.position_mean, self.position_range = self._find_position_bounds()
-        self.foot_friction_coeffs = np.array([0.5]*4)
-        self.link_masses = np.array([self.client.getDynamicsInfo(self.quadruped, i)[0] for i in range(self.num_links)])
+        # 19 links if the "base" link is included (massless, 0.001 cube)
+        self.num_links = 18
+        (self.positions_lb,
+            self.positions_ub,
+            self.position_mean,
+            self.position_range) = self._find_position_bounds()
+        self.foot_friction_coeffs = np.array([0.5] * 4)
+        self.original_link_masses = np.array(
+            [self.client.getDynamicsInfo(self.quadruped, i)[0]
+             for i in range(self.num_links)])
+        self.link_masses = []
+        # this is for the visualization when debug = True for heightmap
+        self._debug_ids = []
 
-        self._debug_ids = [] # this is for the visualization when debug = True for heightmap
-
-        self._init_vis = True #TODO get rid of this
+        self._init_vis = True  # TODO get rid of this
 
         self.num_foot_terrain_scan_points = 10 # per foot
         self.vis = vis
@@ -62,52 +71,55 @@ class AliengoQuadruped:
             self.init_vis()
 
         # state variables
-        self.joint_positions  = np.zeros(12)
+        self.joint_positions = np.zeros(12)
         self.joint_velocities = np.zeros(12)
-        self.reaction_forces  = np.zeros(12)
-        self.applied_torques  = np.zeros(12)
+        self.reaction_forces = np.zeros(12)
+        self.applied_torques = np.zeros(12)
 
         self.base_position = np.zeros(3)
         self.base_orientation = np.zeros(4)
         self.base_vel = np.zeros(3)
         self.base_avel = np.zeros(3)
         self.foot_normal_forces = np.zeros(4)
-        self.state_is_updated = False # flag to prevent multiple calls of observation functions without a state update
-        # in between. (Currently, I can't think of any situation where you would do that.)
+        # flag to prevent multiple observation calls without a state update
+        self.state_is_updated = False
 
         # observation variables
         # the issue is that these are not determined by self.update_state(). I could figure out self.last_foot_position
         # command by back_calculating the foot position, which ASSUMES that robot joint positions are reset at start
         # of episode. I can update phases the same way, just setting them to the phase when t = 0.
-        self.phases = None # the issue is that this is not initialized when
+        self.phases = None  # the issue is that this is not initialized when
         self.f_i = None
 
-        '''For use in calculating smoothness reward.
-        NOTE self.reset_joint_positions() should be called before pmtg_reward is to initialize this variable.
-        Most recent foot position target will be at index 0. Position targets are in foot frame, not global.'''
-        self.foot_target_history = [None] * 3
-        self.joint_pos_error_history = [None] * 3 # used in Hutter PMTG observation
-        self.joint_velocity_history = [None] * 3 # used in Hutter PMTG observation
-        self.true_joint_position_target_history = [None] * 3
-        self.last_foot_disturbance = np.zeros(6) # this is a wrench
-        self.last_torso_disturbance = np.zeros(4) # this is a foot index and a force
+        # TODO eventually implement the below for more complex agents with
+        # smoothing rewards
+        # self.foot_target_history = [None] * 3
+        # self.joint_pos_error_history = [None] * 3 # used in Hutter PMTG observation
+        # self.joint_velocity_history = [None] * 3 # used in Hutter PMTG observation
+        # self.true_joint_position_target_history = [None] * 3
+        # self.last_foot_disturbance = np.zeros(6) # this is a wrench
+        # self.last_torso_disturbance = np.zeros(4) # this is a foot index and a force
 
-        self.last_global_foot_target = np.zeros((4,3)) # this is only used for vis rn
+        # this is only used for vis rn
+        self.last_global_foot_target = np.zeros((4, 3))
 
-        # enable force/torque sensing for knee joints, to avoid walking that excessively loads them
-        for joint in self.knee_joints:
-            self.client.enableJointForceTorqueSensor(self.quadruped, joint, enableSensor=True)
+        # # enable force/torque sensing for knee joints, to avoid walking that excessively loads them
+        # for joint in self.knee_joints:
+        #     self.client.enableJointForceTorqueSensor(self.quadruped, joint, enableSensor=True)
 
         if footstep_params is not None:
             self.footstep_generator = FootstepTargets(footstep_params, self)
 
-
     def init_vis(self):
-        small_ball = self.client.createVisualShape(p.GEOM_SPHERE, radius=0.01, rgbaColor=[0, 155, 255, 0.75])
+        small_ball = self.client.createVisualShape(
+            p.GEOM_SPHERE,
+            radius=0.01,
+            rgbaColor=[0, 155, 255, 0.75])
         self.foot_scan_balls = [0] * self.num_foot_terrain_scan_points * 4
         self.foot_text = [0] * self.num_foot_terrain_scan_points * 4
         for i in range(self.num_foot_terrain_scan_points * 4):
-            self.foot_scan_balls[i] = self.client.createMultiBody(baseVisualShapeIndex=small_ball)
+            self.foot_scan_balls[i] = self.client.createMultiBody(
+                baseVisualShapeIndex=small_ball)
             # self.foot_text[i] = self.client.addUserDebugText('init', textPosition=[0,0,0], textColorRGB=[0]*3)
         # self.client.configureDebugVisualizer(p.COV_ENABLE_WIREFRAME,1)
         # self.client.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
@@ -117,7 +129,7 @@ class AliengoQuadruped:
 
         # for vis coordinate system
         self.line_length = 0.25
-        self.line_ids = [[0]*3]*4
+        self.line_ids = [[0] * 3] * 4
         self.line_width = 5
         # for i in range(4):
         #     self.line_ids[i][0] = self.client.addUserDebugLine([0,0,0], [self.line_length,0,0], lineColorRGB=[1,0,0],
@@ -133,156 +145,90 @@ class AliengoQuadruped:
         #                                                     parentObjectUniqueId=self.quadruped,
         #                                                     lineWidth=self.line_width)
 
-
-    def get_hutter_teacher_pmtg_observation_bounds(self):
-        obs_lb, obs_ub = self.get_hutter_pmtg_observation_bounds()
-        info_lb, info_ub = self.get_privileged_info_bounds()
-        return np.concatenate((obs_lb, info_lb)), np.concatenate((obs_ub, info_ub))
-
-
-    def is_state_terminal(self, flipping_bounds=[np.pi/2., np.pi/4., np.pi/4.], height_lb=0.23, height_ub=0.8):
-        ''' Calculates whether to end current episode due to failure based on current state.
-        Returns boolean and puts reason in info if True. Default flipping bounds work well for Aliengo-v0 because its
-        flat and straight, but should be loosened for rough terain. '''
-
-        termination_dict = {}
-
-        base_z_position = self.base_position[2]
-        height_out_of_bounds = ((base_z_position < height_lb) or (base_z_position > height_ub))
-        falling = ((abs(np.array(p.getEulerFromQuaternion(self.base_orientation))) > flipping_bounds).any())
-
-        if falling:
-            termination_dict['termination_reason'] = 'falling'
-        elif height_out_of_bounds:
-            termination_dict['termination_reason'] = 'height_out_of_bounds'
-
-        return any([falling, height_out_of_bounds]), termination_dict
-
-
-    def get_hutter_teacher_pmtg_observation(self):
-        return np.concatenate((self.get_hutter_pmtg_observation(), self.privileged_info))
-
-
-    # def footstep_param_obs(self):
-
-    #     if not self.state_is_updated:
-    #         raise ValueError('State has not been updated since last "get observation" call.')
-
-    #     obs = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation),
-    #                         self.base_vel, #TODO write a state estimator for this stuff, for actual robot
-    #                         self.base_avel,
-    #                         self.joint_positions,
-    #                         self.joint_velocities,
-    #                         self.applied_torques,
-    #                         self.foot_target_history[0].flatten(),
-    #                         # Not sure if these latter two are actually functioning as intended, since I'm keeping them
-    #                         # at the same resolution as the actions are given. But they at least help, so I'll include
-    #                         # them.
-    #                         np.array(self.joint_pos_error_history).flatten(),
-    #                         np.array(self.joint_velocity_history).flatten()))
-
-    #     self.state_is_updated = False
-    #     return obs
-
-
-    # def footstep_param_obs_bounds(self):
-    #     return -np.ones(129 + 4), np.ones(129 + 4)
-
-
-    # def footstep_param_action(self, action):
-    #     foot_pos_com = action[:12].reshape(4, 3)
-    #     joint_pos_com = action[12:]
-
-    #     a = self.set_foot_positions(foot_pos_com, return_joint_targets=True)
-    #     # b = self._actions_to_positions(joint_pos_com)
-    #     b = joint_pos_com * self.position_range * 0.5
-    #     self.set_joint_position_targets(a + b, true_positions=True)
-
-
-    # def footstep_param_action_bounds(self):
-    #     lb = np.concatenate((np.array([-0.25, -0.2, -0.55] * 4),
-    #                         -np.ones(12) * 0.1))
-    #     ub = np.concatenate((np.array([0.25, 0.2, -0.2] * 4),
-    #                         np.ones(12) * 0.1))
-    #     return lb, ub
-
-
     def update_state(self, flat_ground, fake_client=None, update_priv_info=True):  # TODO get rid of this flatground shit
-        '''Updates state of the quadruped. This should be called once per env.step() and once per env.reset().
-        The state is not the same as the observation. Returns nothing.'''
+        """Updates state of the quadruped. This should be called
+        once per env.step() and once per env.reset().
+        The state is not the same as the observation.
+        """
 
-        joint_states = self.client.getJointStates(self.quadruped, self.motor_joint_indices)
-        self.joint_positions  = np.array([joint_states[i][0] for i in range(self.n_motors)])
-        self.joint_velocities = np.array([joint_states[i][1] for i in range(self.n_motors)])
-        self.reaction_forces  = np.array([joint_states[i][2] for i in range(self.n_motors)])
-        self.applied_torques  = np.array([joint_states[i][3] for i in range(self.n_motors)])
+        joint_states = self.client.getJointStates(self.quadruped,
+                                                  self.motor_joint_indices)
+        self.joint_positions = np.array([joint_states[i][0]
+                                         for i in range(self.n_motors)])
+        self.joint_velocities = np.array([joint_states[i][1]
+                                          for i in range(self.n_motors)])
+        self.reaction_forces = np.array([joint_states[i][2]
+                                         for i in range(self.n_motors)])
+        self.applied_torques = np.array([joint_states[i][3]
+                                        for i in range(self.n_motors)])
 
-        temp = self.client.getBasePositionAndOrientation(self.quadruped) # orientation in quaternions
-        self.base_position, self.base_orientation = (np.array(temp[0]), np.array(temp[1]))
-        self.base_vel, self.base_avel = self.client.getBaseVelocity(self.quadruped)
+        # orientation is in quaternions
+        temp = self.client.getBasePositionAndOrientation(self.quadruped)
+        self.base_position = np.array(temp[0])
+        self.base_orientation = np.array(temp[1])
+        self.base_vel, self.base_avel = self.client.getBaseVelocity(
+            self.quadruped)
         self.foot_normal_forces = self.get_foot_contacts()
 
-        # most recent value stored in index 0
-        self.joint_pos_error_history.pop()
-        self.joint_pos_error_history.insert(0, self.joint_positions - self.true_joint_position_target_history[0])
-        self.joint_velocity_history.pop()
-        self.joint_velocity_history.insert(0, self.joint_velocities)
-
-        if update_priv_info:
-            self.privileged_info = self.get_privileged_info(flat_ground=flat_ground, fake_client=fake_client)
+        # # most recent value stored in index 0
+        # self.joint_pos_error_history.pop()
+        # self.joint_pos_error_history.insert(0, self.joint_positions - self.true_joint_position_target_history[0])
+        # self.joint_velocity_history.pop()
+        # self.joint_velocity_history.insert(0, self.joint_velocities)
 
         self.state_is_updated = True
 
+    # def _foot_clearance_rew(self):
+    #     """Calculate foot clearancance reward as fraction of feet in swing
+    #     phase that are higher than the highest surrounding point of the foot
+    #     scan.
+    #     """
 
-    def _foot_clearance_rew(self):
-        '''Calculates foot clearancance reward as fraction of feet in swing phase that are higher than the highest
-        surrounding point of the foot scan.'''
+    #     num_feet_in_swing = 0.0
+    #     num_clearance = 0.0
+    #     feet_receiving_rew = []
+    #     for i in range(4):
+    #         if np.pi* 1.25 < self.phases[i] < 1.75 * np.pi:
+    #             num_feet_in_swing += 1.0
 
-        num_feet_in_swing = 0.0
-        num_clearance = 0.0
-        feet_receiving_rew = []
-        for i in range(4):
-            if np.pi* 1.25 < self.phases[i] < 1.75 * np.pi:
-                num_feet_in_swing += 1.0
+    #             scan_points = self.privileged_info[i * self.num_foot_terrain_scan_points: \
+    #                                                                         (i+1) * self.num_foot_terrain_scan_points]
+    #             #TODO make sure these match up with the correct foot's phase
+    #             extra_clearance = 0.03 # less than an inch
+    #             if (scan_points < 0.0 - extra_clearance).all():
+    #                 num_clearance += 1.0
+    #                 feet_receiving_rew.append(i)
 
-                scan_points = self.privileged_info[i * self.num_foot_terrain_scan_points: \
-                                                                            (i+1) * self.num_foot_terrain_scan_points]
-                #TODO make sure these match up with the correct foot's phase
-                extra_clearance = 0.03 # less than an inch
-                if (scan_points < 0.0 - extra_clearance).all():
-                    num_clearance += 1.0
-                    feet_receiving_rew.append(i)
+    #     rew = 0.0
+    #     if num_feet_in_swing > 0:
+    #         rew = num_clearance/num_feet_in_swing
 
-        rew = 0.0
-        if num_feet_in_swing > 0:
-            rew = num_clearance/num_feet_in_swing
-
-        if self.vis:
-            # turn the legs that receive the reward blue NOTE this makes the visualization very slow. Perhaps I can make
-            # separate legs that overlay them and then move out of sight, lol.
-            pass
-            # for i in range(4):
-            #     if i in feet_receiving_rew:
-            #         self.client.changeVisualShape(self.quadruped, self.shin_links[i], rgbaColor=[0, 0, 255, 0.9])
-            #     else:
-            #         self.client.changeVisualShape(self.quadruped, self.shin_links[i], rgbaColor=[0, 0, 0, 0.75])
-        return rew
+    #     if self.vis:
+    #         # turn the legs that receive the reward blue NOTE this makes the visualization very slow. Perhaps I can make
+    #         # separate legs that overlay them and then move out of sight, lol.
+    #         pass
+    #         # for i in range(4):
+    #         #     if i in feet_receiving_rew:
+    #         #         self.client.changeVisualShape(self.quadruped, self.shin_links[i], rgbaColor=[0, 0, 255, 0.9])
+    #         #     else:
+    #         #         self.client.changeVisualShape(self.quadruped, self.shin_links[i], rgbaColor=[0, 0, 0, 0.75])
+    #     return rew
 
 
-    def _wide_step_rew(self):
-        '''Returns the negative average amount that the foot targets move outside the max_lateral_offset.
-        Max reward is zero. '''
+    # def _wide_step_rew(self):
+    #     '''Returns the negative average amount that the foot targets move outside the max_lateral_offset.
+    #     Max reward is zero. '''
 
-        # for reference:
-        # foot_positions[[0,2], 1] = -lateral_offset
-        # foot_positions[[1,3], 1] = lateral_offset
-        rew = 0.0
-        max_lateral_offset = 0.11
-        mask1 = self.foot_target_history[0][[0,2], 1] < -np.ones(2) * max_lateral_offset # true if positions are bad
-        rew += (mask1 * (self.foot_target_history[0][[0,2], 1] + np.ones(2) * max_lateral_offset)).sum()
-        mask2 = self.foot_target_history[0][[1,3], 1] > np.ones(2) * max_lateral_offset # true if positions are bad
-        rew += -(mask2 * (self.foot_target_history[0][[1,3], 1] - np.ones(2) * max_lateral_offset)).sum()
-        return rew/4.0
+    #     # for reference:
+    #     # foot_positions[[0,2], 1] = -lateral_offset
+    #     # foot_positions[[1,3], 1] = lateral_offset
+    #     rew = 0.0
+    #     max_lateral_offset = 0.11
+    #     mask1 = self.foot_target_history[0][[0,2], 1] < -np.ones(2) * max_lateral_offset # true if positions are bad
+    #     rew += (mask1 * (self.foot_target_history[0][[0,2], 1] + np.ones(2) * max_lateral_offset)).sum()
+    #     mask2 = self.foot_target_history[0][[1,3], 1] > np.ones(2) * max_lateral_offset # true if positions are bad
+    #     rew += -(mask2 * (self.foot_target_history[0][[1,3], 1] - np.ones(2) * max_lateral_offset)).sum()
+    #     return rew/4.0
 
 
     # def pmtg_reward(self):
@@ -392,306 +338,117 @@ class AliengoQuadruped:
     #             + 2.0 * wide_step_rew # 0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew
     #     return total_rew, rew_dict
 
+    def pmtg_action(self, time, action):
+        self.set_trajectory_parameters(time, action[0], action[1],
+                                       action[2], action[3], action[4],
+                                       action[5], action[6:])
 
-    # def get_hutter_pmtg_observation(self, noisy=False):
-    #     '''This gets the variable o_t described on pg 8 second column of
-    #     https://robotics.sciencemag.org/content/robotics/5/47/eabc5986.full.pdf
-    #     This observation is concatenated to the privledged information and used as input to the teacher policy. The
-    #     student policy will only have access to this information. '''
+    # def get_privileged_info(self, fake_client=None, flat_ground=False, ray_start=100):
+    #     '''
+    #     Priveledged info includes
+    #     - terrain profile = scan of nine points in a 10 cm radius around each foot
+    #         - this requires a replica of the simulation without the quadruped('fake_client')
+    #     - foot contact states and forces
+    #     - friction coefficients
+    #     - link masses
+    #     From page 8 of https://robotics.sciencemag.org/content/robotics/5/47/eabc5986.full.pdf
+    #     maybeTODO add if body is contacting?
+    #     '''
 
-    #     if not self.state_is_updated:
-    #         raise ValueError('State has not been updated since last "get observation" call.')
-    #     obs = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation),
-    #                         self.base_vel, #TODO write a state estimator for this stuff, for actual robot
-    #                         self.base_avel,
-    #                         self.joint_positions,
-    #                         self.joint_velocities,
-    #                         np.sin(self.phases),
-    #                         np.cos(self.phases),
-    #                         self.f_i,
-    #                         self.foot_target_history[0].flatten(),
-    #                         # Not sure if these latter two are actually functioning as intended, since I'm keeping them
-    #                         # at the same resolution as the actions are given. But they at least help, so I'll include
-    #                         # them.
-    #                         np.array(self.joint_pos_error_history).flatten(),
-    #                         np.array(self.joint_velocity_history).flatten()))
+    #     terrain_profile = self._get_foot_terrain_scan(fake_client, flat_ground=flat_ground, ray_start=ray_start)
+    #     contact_forces = self.get_foot_contacts()
+    #     privileged_info = np.concatenate((terrain_profile,
+    #                                     contact_forces,
+    #                                     self.foot_friction_coeffs,
+    #                                     self.link_masses,
+    #                                     self.last_torso_disturbance,
+    #                                     self.last_foot_disturbance)) # verifies that this copies
+    #     self.last_torso_disturbance = np.zeros(6) # NOTE these variables only work when disturbances last for 1 step
+    #     self.last_foot_disturbance = np.zeros(4) # If I have multi-step disturbances, I will need to change this
+    #     return privileged_info
 
-    #     if noisy:
-    #         raise NotImplementedError
-    #     self.state_is_updated = False
-    #     return obs
+    # def _get_foot_terrain_scan(self, fake_client=None, flat_ground=False, ray_start=100):
+    #     '''Returns a flat array of relative heights of length 4 * self.num_foot_terrain_scan_points. The heights are
+    #     relative to the bottom of the aliengo foot.
+    #     NOTE concavity of terrain can't be determined with this scan setup.
+    #     TODO see if starting the rays extremely is actually slower (ie do I care about making rays shorter when I can)'''
 
+    #     foot_pos = np.array([i[0] for i in self.client.getLinkStates(self.quadruped, self.foot_links)])
 
-    # def get_hutter_pmtg_observation_bounds(self):
+    #     if flat_ground:
+    #         # the return is a flat vector
+    #         relative_z = -np.repeat(foot_pos[:,2] -0.0265, self.num_foot_terrain_scan_points)
+    #         if self.vis:
+    #             r = 0.1
+    #             n = self.num_foot_terrain_scan_points
+    #             x = np.linspace(0, 2*np.pi, n)
+    #             scan_positions = (np.expand_dims(foot_pos[:, :-1], 1) + \
+    #                                 np.expand_dims(np.stack((r * np.cos(x), r * np.sin(x))).swapaxes(0,1), 0)).reshape((4*n, 2))
+    #             raw = np.zeros((len(scan_positions), 4, 3))
+    #     else:
+    #         if fake_client is None: raise ValueError('Need another client with same terrain to get heightmap from.')
+    #         r = 0.1
+    #         n = self.num_foot_terrain_scan_points
+    #         x = np.linspace(0, 2*np.pi, n)
+    #         scan_positions = (np.expand_dims(foot_pos[:, :-1], 1) + \
+    #                             np.expand_dims(np.stack((r * np.cos(x), r * np.sin(x))).swapaxes(0,1), 0)).reshape((4*n, 2))
+    #         ray_start_pos = np.concatenate((scan_positions, np.ones((4*n, 1)) * ray_start), axis=1)
+    #         ray_end_pos = np.concatenate((scan_positions, np.ones((4*n, 1)) * -1), axis=1)
+    #         raw = fake_client.rayTestBatch(rayFromPositions=ray_start_pos, rayToPositions=ray_end_pos, numThreads=0)
+    #         relative_z = np.array([raw[i][3][2] - (foot_pos[j][2] - 0.0265) for j in range(4)\
+    #                                                                                  for i in range(j * n, (j+1) * n)])
 
-    #     vel_lb, vel_ub = self.get_joint_velocity_bounds()
-    #     action_lb, action_ub = self.get_hutter_pmtg_action_bounds()
-    #     f_i_lb = action_lb[:4]
-    #     f_i_ub = action_ub[:4]
-    #     foot_cmd_lb = action_lb[4:] - 0.75
-    #     foot_cmd_ub = action_ub[4:] + 0.75
+    #     if self.vis:
+    #         for i in range(n * 4):
+    #             pos = np.concatenate((scan_positions[i], [raw[i][3][2]]))
+    #             self.client.resetBasePositionAndOrientation(self.foot_scan_balls[i], posObj=pos, ornObj=[0,0,0,1])
+    #             # TODO for some reason, rendering this text increases rendering time by about 100x. Why???
+    #             # self.client.addUserDebugText('{:.1f}'.format(relative_z[i]),
+    #             #                                 textPosition=pos,
+    #             #                                 replaceItemUniqueId=self.foot_text[i],
+    #             #                                 textColorRGB=[0]*3)
+    #     return relative_z
 
-    #     observation_lb = np.concatenate((np.array([-np.pi] * 3), # base orientation (Euler angles)
-    #                                     np.array([-1e3]*3), # base vel
-    #                                     np.array([-1e3]*3), # base avel
-    #                                     self.positions_lb, # joint position
-    #                                     vel_lb,
-    #                                     -np.ones(8), # sin and cos of phases
-    #                                     f_i_lb, # last f_i command
-    #                                     foot_cmd_lb, # last foot position command
-    #                                     np.tile(-(self.positions_ub - self.positions_lb),3), # joint pos error history
-    #                                     np.tile(vel_lb,3))) # joint velocity history
-
-    #     observation_ub = np.concatenate((np.array([np.pi] * 3), # base orientation (Euler angles)
-    #                                     np.array([1e3]*3), # base vel
-    #                                     np.array([1e3]*3), # base avel
-    #                                     self.positions_ub, # joint positions
-    #                                     vel_ub,
-    #                                     np.ones(8), # sin and cos of phases
-    #                                     f_i_ub, # last f_i command
-    #                                     foot_cmd_ub, # last foot position command
-    #                                     np.tile((self.positions_ub - self.positions_lb),3), # joint positions error
-    #                                     np.tile(vel_ub,3))) # joint velocity history
-
-    #     return observation_lb, observation_ub
-
-
-    # def get_pmtg_observation(self):
-    #     '''Returns the observation for PMTG control. Observation consists of sin(phase) and cos(phase) for each leg,
-    #     4D IMU data, last position targets'''
-
-    #     if not self.state_is_updated:
-    #         raise ValueError('State has not been updated since last "get observation" call.')
-    #     imu = np.concatenate((self.client.getEulerFromQuaternion(self.base_orientation)[:-1], self.base_avel[:-1]))
-    #     # std of pitch and roll noise is 0.9 deg, std of pitch rate and roll rate is 1.8 deg/s
-    #     imu += np.random.randn(4) * np.array([np.pi/2. * 0.01]*2 + [np.pi * 0.01]*2)
-    #     observation = np.concatenate((np.sin(self.phases),
-    #                                 np.cos(self.phases),
-    #                                 imu,
-    #                                 self.foot_target_history[0].flatten()))
-    #     self.state_is_updated = False
-    #     return observation
-
-
-    # def get_pmtg_observation_bounds(self):
-    #     '''Observation consists of sin(phase) and cos(phase) for each leg, 4D IMU data, last position targets.
-    #     Bounds for IMU and last foot position commands are somewhat guesses. I don't think it matters much. '''
-
-    #     observation_ub = np.concatenate((np.ones(8),
-    #                                     np.array([np.pi/2.0, np.pi/2.0, 1e5, 1e5]), # pitch, roll, pitch rate, roll rate
-    #                                     np.ones(12)*2)) # last foot position commands
-    #     return -observation_ub, observation_ub
-
-
-    # def get_hutter_pmtg_action_bounds(self):
-    #     return self.get_pmtg_action_bounds()
-
-
-    # def get_pmtg_action_bounds(self):
-    #     # 17 dim action space
-
-    #     #  def set_trajectory_parameters(self, t, f=2.00, step_height=0.2, step_bottom=-0.45, lateral_offset=0.075,
-    #     #         x_offset=0.02109375, step_len=0.2, residuals=np.zeros(12) ):
-    #     # residuals are in true joint positions space, not normalized
-
-
-    #     # Most Recent
-    #     lb = np.concatenate((np.array([0.75, 0.075, -0.5, 0.07, -0.05, 0.05]), -np.ones(12) * np.pi/16.0 ))
-    #     ub = np.concatenate((np.array([1.5, 0.20, -0.35, 0.10, 0.05, 0.1]), np.ones(12) * np.pi/16.0 ))
-
-    #     # lb = np.concatenate((np.array([1.25, 0.075, -0.5, 0.04, -0.05, 0.05]), -np.ones(12) * np.pi/16.0 ))
-    #     # ub = np.concatenate((np.array([2.25, 0.25, -0.35, 0.125, 0.05, 0.2]), np.ones(12) * np.pi/16.0 ))
-
-    #     # Oldest
-    #     # lb = np.concatenate((np.array([0.0, 0.05, -0.6, 0.025, -0.1, 0.00]), -np.ones(12) * np.pi/8.0 ))
-    #     # ub = np.concatenate((np.array([3.0, 0.3, -0.3, 0.125, 0.1, 0.4]), np.ones(12) * np.pi/8.0 ))
-    #     return lb, ub
-
-
-    def pmtg_action(self, time, action): #TODO does it make sense to call this every stepSimulation?
-        # its proabably slower to do all the IK and stuff every time (instead of just sending the joint, positions, but
-        # probably fine for now)
-        self.set_trajectory_parameters(time, action[0], action[1], action[2], action[3], action[4], action[5],
-                                        action[6:])
-
-
-    # def get_pmtg_observation_bounds(self):
-    #     # same as regular flat observation, just with the sin and cos of trajectory generator phases added on.
-    #     return -np.ones(58), np.ones(58)
-
-
-    # def get_pmtg_observation(self):
-    #     obs = self.get_observation()
-    #     obs = np.concatenate((obs, np.sin(self.phases), np.cos(self.phases)))
-    #     return obs
-
-
-
-    def get_observation_bounds(self):
-        # NOTE I have determined observation bounds are not used for anything lol
-        # torque_lb, torque_ub = self.get_joint_torque_bounds()
-        # position_lb, position_ub = self.get_joint_position_bounds()
-        # velocity_lb, velocity_ub = self.get_joint_velocity_bounds()
-        # observation_lb = np.concatenate((torque_lb,
-        #                                 position_lb,
-        #                                 velocity_lb,
-        #                                 -0.78 * np.ones(4), # this is for base orientation in quaternions
-        #                                 np.zeros(4), # foot normal forces
-        #                                 -1e5 * np.ones(3), # cartesian acceleration (arbitrary bound)
-        #                                 -1e5 * np.ones(3))) # angular velocity (arbitrary bound)
-
-        # observation_ub = np.concatenate((torque_ub,
-        #                                 position_ub,
-        #                                 velocity_ub,
-        #                                 0.78 * np.ones(4),
-        #                                 1e4 * np.ones(4), # arbitrary bound
-        #                                 1e5 * np.ones(3),
-        #                                 1e5 * np.ones(3)))
-
-        return -np.ones(50), np.ones(50)
-
-
-    # def get_observation(self):
-    #     # observation dim is 12 * 3 + 4 + 4 + 3 + 3 = 50
-    #     if not self.state_is_updated:
-    #         raise ValueError('State has not been updated since last "get observation" call.')
-    #     obs = np.concatenate((self.applied_torques,
-    #                         self.positions_to_actions(self.joint_positions),
-    #                         self.joint_velocities,
-    #                         self.base_orientation,
-    #                         self.foot_normal_forces,
-    #                         self.base_vel,
-    #                         self.base_avel))
-    #     self.state_is_updated = False
-    #     return obs
-
-
-    # def reward(self): #TODO
-    #     # for regular flat implementation
-
-    #     vel_cap = 0.5
-
-    #     fwd_rew = np.clip(self.base_vel[0], -vel_cap, vel_cap)
-    #     torque_rew = -np.linalg.norm(self.applied_torques)
-
-    #     rew_dict = {'fwd_rew': fwd_rew, 'torque_rew': torque_rew, 'x_vel': self.base_vel[0]}
-
-    #     rew = fwd_rew + 0.001 * torque_rew
-    #     return rew, rew_dict
-
-    def get_privileged_info(self, fake_client=None, flat_ground=False, ray_start=100):
-        '''
-        Priveledged info includes
-        - terrain profile = scan of nine points in a 10 cm radius around each foot
-            - this requires a replica of the simulation without the quadruped('fake_client')
-        - foot contact states and forces
-        - friction coefficients
-        - link masses
-        From page 8 of https://robotics.sciencemag.org/content/robotics/5/47/eabc5986.full.pdf
-        maybeTODO add if body is contacting?
-        '''
-
-        terrain_profile = self._get_foot_terrain_scan(fake_client, flat_ground=flat_ground, ray_start=ray_start)
-        contact_forces = self.get_foot_contacts()
-        privileged_info = np.concatenate((terrain_profile,
-                                        contact_forces,
-                                        self.foot_friction_coeffs,
-                                        self.link_masses,
-                                        self.last_torso_disturbance,
-                                        self.last_foot_disturbance)) # verifies that this copies
-        self.last_torso_disturbance = np.zeros(6) # NOTE these variables only work when disturbances last for 1 step
-        self.last_foot_disturbance = np.zeros(4) # If I have multi-step disturbances, I will need to change this
-        return privileged_info
-
-
-    def get_privileged_info_bounds(self):
-        # NOTE: I have determined that observation bounds are not really used for anything in kostrikov's implementation
-
-        # info_lb = np.concatenate((-np.ones(self.num_foot_terrain_scan_points * 4) * 1e2,
-        #                         np.zeros(4), # foot contact forces
-        #                             ))
-
-        # info_ub = np.concatenate((np.ones(self.num_foot_terrain_scan_points * 4) * 1e2,
-        #                         np.ones(4) * 1e5, # foot contact forces
-        #                         ))
-        priv_info_len = self.num_foot_terrain_scan_points * 4 + 4 + 4 + self.num_links + 6 + 4
-        return -np.ones(priv_info_len) *1e10, np.ones(priv_info_len) * 1e10
-
-
-    def _get_foot_terrain_scan(self, fake_client=None, flat_ground=False, ray_start=100):
-        '''Returns a flat array of relative heights of length 4 * self.num_foot_terrain_scan_points. The heights are
-        relative to the bottom of the aliengo foot.
-        NOTE concavity of terrain can't be determined with this scan setup.
-        TODO see if starting the rays extremely is actually slower (ie do I care about making rays shorter when I can)'''
-
-        foot_pos = np.array([i[0] for i in self.client.getLinkStates(self.quadruped, self.foot_links)])
-
-        if flat_ground:
-            # the return is a flat vector
-            relative_z = -np.repeat(foot_pos[:,2] -0.0265, self.num_foot_terrain_scan_points)
-            if self.vis:
-                r = 0.1
-                n = self.num_foot_terrain_scan_points
-                x = np.linspace(0, 2*np.pi, n)
-                scan_positions = (np.expand_dims(foot_pos[:, :-1], 1) + \
-                                    np.expand_dims(np.stack((r * np.cos(x), r * np.sin(x))).swapaxes(0,1), 0)).reshape((4*n, 2))
-                raw = np.zeros((len(scan_positions), 4, 3))
-        else:
-            if fake_client is None: raise ValueError('Need another client with same terrain to get heightmap from.')
-            r = 0.1
-            n = self.num_foot_terrain_scan_points
-            x = np.linspace(0, 2*np.pi, n)
-            scan_positions = (np.expand_dims(foot_pos[:, :-1], 1) + \
-                                np.expand_dims(np.stack((r * np.cos(x), r * np.sin(x))).swapaxes(0,1), 0)).reshape((4*n, 2))
-            ray_start_pos = np.concatenate((scan_positions, np.ones((4*n, 1)) * ray_start), axis=1)
-            ray_end_pos = np.concatenate((scan_positions, np.ones((4*n, 1)) * -1), axis=1)
-            raw = fake_client.rayTestBatch(rayFromPositions=ray_start_pos, rayToPositions=ray_end_pos, numThreads=0)
-            relative_z = np.array([raw[i][3][2] - (foot_pos[j][2] - 0.0265) for j in range(4)\
-                                                                                     for i in range(j * n, (j+1) * n)])
-
-        if self.vis:
-            for i in range(n * 4):
-                pos = np.concatenate((scan_positions[i], [raw[i][3][2]]))
-                self.client.resetBasePositionAndOrientation(self.foot_scan_balls[i], posObj=pos, ornObj=[0,0,0,1])
-                # TODO for some reason, rendering this text increases rendering time by about 100x. Why???
-                # self.client.addUserDebugText('{:.1f}'.format(relative_z[i]),
-                #                                 textPosition=pos,
-                #                                 replaceItemUniqueId=self.foot_text[i],
-                #                                 textColorRGB=[0]*3)
-        return relative_z
-
-
-    def randomize_foot_friction(self, lb=0.3, ub=1.2):
-        '''Randomizes the coefficient of friction of each foot, sampled from uniform random distribution. Returns the
-        random coefficients.'''
+    def randomize_foot_friction(self, lb=0.3, ub=1.2):  # TODO enable these randomizations in the yaml files
+        """Randomize the coefficient of friction of each foot,
+        sampled from uniform random distribution. Returns the
+        random coefficients.
+        """
 
         self.foot_friction_coeffs = np.random.uniform(low=lb, high=ub, size=4)
         for i in range(4):
-            self.client.changeDynamics(self.quadruped, self.foot_links[i], lateralFriction=self.foot_friction_coeffs[i])
+            self.client.changeDynamics(
+                self.quadruped,
+                self.foot_links[i],
+                lateralFriction=self.foot_friction_coeffs[i])
         return self.foot_friction_coeffs
 
-
     def randomize_link_masses(self, lb=-0.05, ub=0.05):
-        '''Set link masses to random values, which are uniformly random percent increases/decreases to original link
-        mass. Returns random masses. Excludes links that have zero mass. Should probably only be called when resetting
-        environments. Returns the new masses.'''
+        """Set link masses to random values, which are uniformly random
+        percent increases/decreases to original link mass.
+        Returns random masses. Excludes links that have zero mass.
+        Should probably only be called when resetting
+        environments.
+        """
 
         assert lb > -1.0
         factors = np.random.uniform(low=lb, high=ub, size=self.num_links) + 1.0
+        self.link_masses = self.original_link_masses * factors
         for i in range(self.num_links):
-            self.link_masses[i] = self.client.getDynamicsInfo(self.quadruped, i)[0] * factors[i]
-            self.client.changeDynamics(self.quadruped, i, mass=self.link_masses[i])
+            self.client.changeDynamics(self.quadruped, i,
+                                       mass=self.link_masses[i])
         return self.link_masses
 
-
-    def trajectory_generator(self, time, amplitude, walking_height, frequency, params):
-
+    def trajectory_generator(self, time, amplitude, walking_height,
+                             frequency, params):
+        # TODO handle the action norming and thoroughly debug this
         assert time >= 0
 
         if params['gait'] == 'trot':
             phase_offsets = np.array([0, np.pi, np.pi, 0])
         elif params['gait'] == 'walk':
-            phase_offsets = np.array([0.0, 1.0, 0.5, 1.5]) * np.pi #FR, FL, RR, RL
+            # FR, FL, RR, RL
+            phase_offsets = np.array([0.0, 1.0, 0.5, 1.5]) * np.pi
 
         phases = (phase_offsets + frequency * 2 * np.pi * time) % (2 * np.pi)
         self.phases = phases
@@ -702,39 +459,47 @@ class AliengoQuadruped:
             x = np.cos(phases[i]) * amplitude
             foot_positions[i] = np.array([x, 0, z])
 
-        foot_positions[[0,2], 1] -= params['lateral_offset']
-        foot_positions[[1,3], 1] += params['lateral_offset']
-        foot_positions[:,0] += params['x_offset']
-        joint_targets = self.set_foot_positions(foot_positions, return_joint_targets=True)
+        foot_positions[[0, 2], 1] -= params['lateral_offset']
+        foot_positions[[1 ,3], 1] += params['lateral_offset']
+        foot_positions[:, 0] += params['x_offset']
+        joint_targets = self.set_foot_positions(foot_positions,
+                                                return_joint_targets=True)
         return joint_targets
 
-
-    def iscen_pmtg(self, action, time, params):  # TODO correct this!!!!!!!!!!!
-        """
-        The action should consist of amplitude, walking_height, frequency, plus 12 joint positions residuals,
+    def iscen_pmtg(self, action, time, params):  # TODO correct this normalize
+        """The action should consist of amplitude, walking_height,
+        frequency, plus 12 joint positions residuals,
         all properly mapped to [-1, 1]
         """
 
-        amplitude, walking_height, frequency, true_residuals = self._unpack_iscen_pmtg_args(action, params)
-        true_joint_positions = self.trajectory_generator(time, amplitude, walking_height, frequency, params)
-        self.set_joint_position_targets(true_joint_positions + true_residuals, true_positions=True)
-
+        (amplitude, walking_height, frequency,
+            true_residuals) = self._unpack_iscen_pmtg_args(action, params)
+        true_joint_positions = self.trajectory_generator(
+            time, amplitude, walking_height, frequency, params)
+        self.set_joint_position_targets(true_joint_positions + true_residuals,
+                                        true_positions=True)
 
     def _unpack_iscen_pmtg_args(self, action, params):
-
         assert params['amplitude_bounds']['ub'] >= params['amplitude_bounds']['lb']
         assert params['walking_height_bounds']['ub'] >= params['walking_height_bounds']['lb']
         assert params['frequency_bounds']['ub'] >= params['frequency_bounds']['lb']
         assert params['residual_bounds']['ub'] >= params['residual_bounds']['lb']
 
-        amplitude = action[0] * (params['amplitude_bounds']['ub'] - params['amplitude_bounds']['lb']) * 0.5 \
-                        + (params['amplitude_bounds']['lb'] + params['amplitude_bounds']['ub']) * 0.5
-        walking_height = action[1] * (params['walking_height_bounds']['ub'] - params['walking_height_bounds']['lb']) \
-                        * 0.5 + (params['walking_height_bounds']['lb'] + params['walking_height_bounds']['ub']) * 0.5
-        frequency = action[2] * (params['frequency_bounds']['ub'] - params['frequency_bounds']['lb']) \
-                        * 0.5 + (params['frequency_bounds']['lb'] + params['frequency_bounds']['ub']) * 0.5
-        residuals = action[3:] * (params['residual_bounds']['ub'] - params['residual_bounds']['lb']) \
-                    * 0.5 * self.position_range * 0.5
+        amplitude = (action[0] * (params['amplitude_bounds']['ub']
+                     - params['amplitude_bounds']['lb']) * 0.5
+                     + (params['amplitude_bounds']['lb']
+                     + params['amplitude_bounds']['ub']) * 0.5)
+        walking_height = (action[1] * (params['walking_height_bounds']['ub']
+                          - params['walking_height_bounds']['lb'])
+                          * 0.5 + (params['walking_height_bounds']['lb']
+                          + params['walking_height_bounds']['ub']) * 0.5)
+        frequency = (action[2] * (params['frequency_bounds']['ub']
+                     - params['frequency_bounds']['lb'])
+                     * 0.5 + (params['frequency_bounds']['lb']
+                     + params['frequency_bounds']['ub']) * 0.5)
+        residuals = (action[3:] * (params['residual_bounds']['ub']
+                     - params['residual_bounds']['lb'])
+                     * 0.5 * self.position_range * 0.5)
         return amplitude, walking_height, frequency, residuals
 
 
@@ -761,18 +526,21 @@ class AliengoQuadruped:
     #         raise ValueError('phase is out of bounds')
 
     def _foot_step_ztraj(self, phase):
-        '''Takes a phase scalar and outputs a value [0, 1]. This is according to this formula is S3 here,
+        """Takes a phase scalar and outputs a value [0, 1].
+        This is according to this formula is S3 here,
         but normalized to [0, 1]:
-        https://robotics.sciencemag.org/content/robotics/suppl/2020/10/19/5.47.eabc5986.DC1/abc5986_SM.pdf'''
+        https://robotics.sciencemag.org/content/robotics/
+        suppl/2020/10/19/5.47.eabc5986.DC1/abc5986_SM.pdf
+        """
 
         assert 0 <= phase < 2 * np.pi, 'phase must be in [0, 2 * pi)'
-        k = 2 * (phase - np.pi)/np.pi
+        k = 2 * (phase - np.pi) / np.pi
         if -2 <= k < 0:
             return 0
         elif 0 <= k < 1:
-            return -2*k*k*k + 3*k*k
+            return -2 * k * k * k + 3 * k * k
         else:
-            return 2*k*k*k - 9*k*k + 12*k - 4
+            return 2 * k * k * k - 9 * k * k + 12 * k - 4
 
 
     # def get_foot_global_positions(self):
@@ -783,66 +551,83 @@ class AliengoQuadruped:
 
 
     def get_foot_frame_foot_positions(self, global_pos=None):
-        '''Returns the position of the feet in the same frame of the set_foot_positions() argument. Z position is the
+        """Returns the position of the feet in the same frame of the
+        set_foot_positions() argument. Z position is the
         bottom of the foot collision spheres. Return is of shape (4, 3).
-
         Inverse of _foot_frame_pos_to_global().
-        '''
+        """
 
         if global_pos is None:
-            global_pos = np.array([i[0] for i in self.client.getLinkStates(self.quadruped, self.foot_links)])
+            global_pos = np.array([i[0] for i in self.client.getLinkStates(
+                self.quadruped, self.foot_links)])
         # cartesian_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
-        adjusted_pos = np.zeros((4,3)) # global foot positions with the hip positions subtacted out
+        # global foot positions with the hip positions subtacted out
+        adjusted_pos = np.zeros((4,3))
         foot_frame_pos = np.zeros((4, 3))
 
         hip_joint_positions = np.zeros((4, 3))
         for i in range(4):
-            hip_offset_from_base = self.client.getJointInfo(self.quadruped, self.hip_joints[i])[14]
-            base_p, base_o = self.client.getBasePositionAndOrientation(self.quadruped)
-            hip_joint_positions[i], _ = np.array(self.client.multiplyTransforms(positionA=base_p,
-                                                    orientationA=base_o,
-                                                    positionB=hip_offset_from_base,
-                                                    orientationB=[0.0, 0.0, 0.0, 1.0]))
+            hip_offset_from_base = self.client.getJointInfo(
+                self.quadruped, self.hip_joints[i])[14]
+            base_p, base_o = self.client.getBasePositionAndOrientation(
+                self.quadruped)
+            hip_joint_positions[i], _ = np.array(
+                self.client.multiplyTransforms(positionA=base_p,
+                                               orientationA=base_o,
+                                               positionB=hip_offset_from_base,
+                                               orientationB=[0, 0, 0, 1.0]))
             _, _, yaw = self.client.getEulerFromQuaternion(base_o)
             adjusted_pos[i] = global_pos[i] - hip_joint_positions[i]
             # all that's left to do is rotate the x and y positions, then compensate for collision sphere height
-            foot_frame_pos[i][0] = adjusted_pos[i][0] * np.cos(yaw) +  adjusted_pos[i][1] * np.sin(yaw)
-            foot_frame_pos[i][1] = adjusted_pos[i][1] * np.cos(yaw) +  adjusted_pos[i][2] * np.sin(yaw)
+            foot_frame_pos[i][0] = (adjusted_pos[i][0] * np.cos(yaw)
+                                    + adjusted_pos[i][1] * np.sin(yaw))
+            foot_frame_pos[i][1] = (adjusted_pos[i][1] * np.cos(yaw)
+                                    + adjusted_pos[i][2] * np.sin(yaw))
             foot_frame_pos[i][2] = adjusted_pos[i][2] - 0.0265
-
         return foot_frame_pos
 
-
     def _foot_frame_pos_to_global(self, foot_frame_pos):
-        '''Takes foot frame positions and outputs global coordinates. Inverse of get_foot_frame_foot_positions().'''
+        """Take foot frame positions and output global coordinates.
+        Inverse of get_foot_frame_foot_positions().
+        """
 
-        hip_joint_positions = np.zeros((4, 3)) # storing these for use when debug
-        commanded_global_foot_positions = np.zeros((4, 3))
+        # storing these for use when debug
+        hip_joint_pos = np.zeros((4, 3))
+        commanded_global_foot_pos = np.zeros((4, 3))
         for i in range(4):
             hip_offset_from_base = self.client.getJointInfo(self.quadruped, self.hip_joints[i])[14]
             base_p, base_o = self.client.getBasePositionAndOrientation(self.quadruped)
-            hip_joint_positions[i], _ = np.array(self.client.multiplyTransforms(positionA=base_p,
-                                                    orientationA=base_o,
-                                                    positionB=hip_offset_from_base,
-                                                    orientationB=[0.0, 0.0, 0.0, 1.0]))
+            hip_joint_pos[i], _ = np.array(
+                self.client.multiplyTransforms(positionA=base_p,
+                                               orientationA=base_o,
+                                               positionB=hip_offset_from_base,
+                                               orientationB=[0, 0, 0, 1.0]))
             # rotate the input foot_positions x and y from robot yaw direction to global coordinate frame
             _, _, yaw = self.client.getEulerFromQuaternion(base_o)
-            commanded_global_foot_positions[i][0] = hip_joint_positions[i][0] + \
-                                                foot_frame_pos[i][0] * np.cos(yaw) + foot_frame_pos[i][1] * np.sin(yaw)
-            commanded_global_foot_positions[i][1] = hip_joint_positions[i][1] + \
-                                                foot_frame_pos[i][0] * np.sin(yaw) + foot_frame_pos[i][1] * np.cos(yaw)
+            commanded_global_foot_pos[i][0] = (hip_joint_pos[i][0]
+                                               + foot_frame_pos[i][0]
+                                               * np.cos(yaw)
+                                               + foot_frame_pos[i][1]
+                                               * np.sin(yaw))
+            commanded_global_foot_pos[i][1] = (hip_joint_pos[i][1]
+                                               + foot_frame_pos[i][0]
+                                               * np.sin(yaw)
+                                               + foot_frame_pos[i][1]
+                                               * np.cos(yaw))
             # 0.0265 is the radius of the foot collision spheres
-            commanded_global_foot_positions[i][2] = hip_joint_positions[i][2] + foot_frame_pos[i][2] + 0.0265
-
-        return commanded_global_foot_positions
-
+            commanded_global_foot_pos[i][2] = (hip_joint_pos[i][2]
+                                               + foot_frame_pos[i][2]
+                                               + 0.0265)
+        return commanded_global_foot_pos
 
     def set_foot_positions(self, foot_positions, return_joint_targets=False):
-        '''Takes a numpy array of shape (4, 3) which represents foot xyz relative to the hip joint. Uses IK to
-        calculate joint position targets and sets those targets. Does not return anything.
-        The Z-foot position represents the BOTTOM of the collision sphere'''
+        """Takes a numpy array of shape (4, 3) which represents foot
+        xyz relative to the hip joint. Uses IK to calculate joint
+        position targets and sets those targets. Does not return anything.
+        The Z-foot position represents the BOTTOM of the collision sphere
+        """
 
-        assert foot_positions.shape == (4,3)
+        assert foot_positions.shape == (4, 3)
         self.foot_target_history.pop()
         self.foot_target_history.insert(0, foot_positions)
 
@@ -852,11 +637,15 @@ class AliengoQuadruped:
         # calculateInverseKinematics2 has a memory leak, so using the original
         joint_positions = np.zeros(12)
         for i in range(4):
-            joint_positions[i*3: (i+1)*3] = np.array(self.client.calculateInverseKinematics(self.quadruped,
-                                                    self.foot_links[i],
-                                                    targetPosition=commanded_global_foot_positions[i]))[i*3: (i+1)*3]
-                                                    # maxNumIterations=1000,
-                                                    # residualThreshold=1e-10))
+            temp = self.client.calculateInverseKinematics(
+                self.quadruped,
+                self.foot_links[i],
+                targetPosition=commanded_global_foot_positions[i],
+                # maxNumIterations=1000,
+                # residualThreshold=1e-10))
+            )
+            joint_positions[i*3 : (i + 1)*3] = np.array(temp)[i*3 : (i + 1)*3]
+        # TODO go back to old way, since Erwin fixed it
         # old way
         # joint_positions = np.array(self.client.calculateInverseKinematics2(self.quadruped,
         #                                             self.foot_links,
@@ -868,16 +657,14 @@ class AliengoQuadruped:
         if self.vis:
             self.visualize()
 
-
-
     def visualize(self):
-        ''' green spheres are commanded positions, red spheres are actual positions.
+        """green spheres are commanded positions, red spheres are actual positions.
         TODOmaybe: add the foot coordinate frames visualization, and light up feet that are contacting.
         TODO: visualize external forces and torques.
-        '''
+        """
 
         commanded_global_foot_positions = self.last_global_foot_target
-        hip_joint_positions = np.zeros((4, 3)) # storing these for use when debug
+        hip_joint_positions = np.zeros((4, 3))  # storing these for use when debug
         for i in range(4):
             hip_offset_from_base = self.client.getJointInfo(self.quadruped, self.hip_joints[i])[14] #TODO just store this value
             base_p, base_o = self.client.getBasePositionAndOrientation(self.quadruped)
@@ -913,7 +700,6 @@ class AliengoQuadruped:
                                                             posObj=hip_joint_positions[i],
                                                             ornObj=[0,0,0,1])
                 # print('{:.3f}, {:.3f}, {:.3f}, {:.3f}'.format(*self.f_i) + ' ' * 20, end='\r', flush=True)
-
 
     def render(self, mode, client):
         '''Returns RGB array of current scene if mode is 'rgb_array'.'''
@@ -982,13 +768,13 @@ class AliengoQuadruped:
         else:
             return
 
-
-    def apply_torso_disturbance(self, wrench=None, max_force_mag=5000 * 0, max_torque_mag=500 * 0):
-        '''Applies a given wrench to robot torso, or defaults to a random wrench. Only lasts for one timestep.
+    def apply_torso_disturbance(
+            self, wrench=None, max_force_mag=5000 * 0, max_torque_mag=500 * 0):
+        """Applies a given wrench to robot torso, or defaults to a random wrench. Only lasts for one timestep.
         Returns the wrench that was applied.
 
         NOTE: This function doesn't work properly when p.setRealTimeSimulation(True).
-        '''
+        """
 
         if wrench is None:
             max_force_component = (max_force_mag * max_force_mag/3.0)**0.5
@@ -1000,7 +786,6 @@ class AliengoQuadruped:
         self.client.applyExternalTorque(self.quadruped, -1, wrench[3:], p.LINK_FRAME)
         self.last_torso_disturbance = wrench
         return wrench
-
 
     def apply_foot_disturbance(self, force=None, foot=None, max_force_mag=2500 * 0):
         '''Applies a given force to a given foot, or defaults to random force applied to random foot. Only lasts for
@@ -1017,7 +802,6 @@ class AliengoQuadruped:
         self.client.applyExternalForce(self.quadruped, self.foot_links[foot], force, (0,0,0), p.LINK_FRAME)
         self.last_foot_disturbance = np.concatenate((force, np.array([foot])))
         return force, foot
-
 
     def get_foot_contacts(self, object_=None):
         '''
@@ -1049,7 +833,6 @@ class AliengoQuadruped:
         if (contacts > 10_000).any():
             warnings.warn("Foot contact force of %.2f over 10,000 (maximum of observation space)" %max(contacts))
         return contacts
-
 
     def _get_heightmap(self, client, ray_start_height, base_position, heightmap_params, vis=False, vis_client=None):
         '''Debug flag enables printing of labeled coordinates and measured heights to rendered simulation.
@@ -1121,7 +904,6 @@ class AliengoQuadruped:
 
         return relative_z_heights.reshape((grid_len, grid_len))
 
-
     def is_non_foot_ground_contact(self):
         """Detect if any parts of the robot, other than the feet, are touching the ground. Returns number of non-foot
         contacts."""
@@ -1134,8 +916,7 @@ class AliengoQuadruped:
             num_contact_points += len(points)
         return num_contact_points
 
-
-    def load_urdf(self, fixed=False, fixed_position=[0,0,1.0], fixed_orientation=[0,0,0]):
+    def load_urdf(self, fixed=False, fixed_position=[0,0,1.0], fixed_orientation=[1,0,0,0]):
         urdfFlags = p.URDF_USE_SELF_COLLISION
         path = str(os.path.dirname(__file__)) +  '/urdf/aliengo.urdf'
         if fixed:
@@ -1156,7 +937,6 @@ class AliengoQuadruped:
         for i in range (self.client.getNumJoints(quadruped)):
             self.client.changeDynamics(quadruped, i, linearDamping=0, angularDamping=.5)
 
-
         # self.quadruped.foot_links = [5, 9, 13, 17]
         # self.lower_legs = [2,5,8,11]
         # for l0 in self.lower_legs:
@@ -1168,17 +948,14 @@ class AliengoQuadruped:
 
         return quadruped
 
-
     def remove_body(self):
         self.client.removeBody(self.quadruped)
-
 
     def self_collision(self):
         '''Returns number of robot self-collision points.'''
 
         points = self.client.getContactPoints(self.quadruped, self.quadruped)
         return len(points)
-
 
     def set_joint_position_targets(self, positions, true_positions=False, time=None, params=None):
         '''

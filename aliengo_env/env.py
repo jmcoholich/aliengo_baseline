@@ -127,7 +127,7 @@ class AliengoEnv(gym.Env):
                 self.quadruped.visualize()
 
         self.eps_step_counter += 1
-        self.quadruped.update_state(flat_ground=False,  #TODO flat_ground
+        self.quadruped.update_state(flat_ground=False,  # TODO flat_ground
                                     fake_client=self.fake_client)
 
         obs = self.observe()
@@ -158,9 +158,9 @@ class AliengoEnv(gym.Env):
                 self.mean_rew_dict['mean_' + key] = rew_dict[key]
         elif self.eps_step_counter > 1:
             for key in rew_dict:
-                self.mean_rew_dict['mean_' + key] += ((rew_dict[key]
-                    - self.mean_rew_dict['mean_' + key])
-                    / float(self.eps_step_counter))
+                temp = ((rew_dict[key] - self.mean_rew_dict['mean_' + key])
+                        / float(self.eps_step_counter))
+                self.mean_rew_dict['mean_' + key] += temp
         else:
             assert False
 
