@@ -10,7 +10,7 @@ import time
 import warnings
 import sys
 
-from .footstep_param import FootstepTargets
+from footstep_param import FootstepTargets
 
 class AliengoQuadruped:
     def __init__(self,

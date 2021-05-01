@@ -7,16 +7,16 @@ import cv2
 import gym
 from pybullet_utils import bullet_client as bc
 
-from . import aliengo_quadruped
-from .action import Action
-from .observation import Observation
-from .termination import Termination
-from .obstacles.hills import Hills
-from .obstacles.steps import Steps
-from .obstacles.stepping_stones import SteppingStones
-from .obstacles.stairs import Stairs
-from .reward import RewardFunction
-from .utils import DummyObstacle
+import aliengo_quadruped
+from action import Action
+from observation import Observation
+from termination import Termination
+from obstacles.hills import Hills
+from obstacles.steps import Steps
+from obstacles.stepping_stones import SteppingStones
+from obstacles.stairs import Stairs
+from reward import RewardFunction
+from utils import DummyObstacle
 
 
 class AliengoEnv(gym.Env):
@@ -200,10 +200,14 @@ def main():
     (linked) into the aliengo robot and
     save video. https://github.com/unitreerobotics/aliengo_pybullet
     """
-    # TODO write a whole new test for this shit
-    # I think this function should be for visual insepction and interaction. The pytest test should just start a headless sim
-    # based on some TEST config file, do some actions (correct and incorrect actions), and make sure the robot state is correct and shit.
-    env = gym.make('gym_aliengo:Aliengo-v0', use_pmtg=False)
+
+    import yaml
+
+    path = os.path.join(os.path.dirname(__file__), '../config/TEST_env.yaml')
+    with open(path) as f:
+        params = yaml.full_load(f)
+
+    env = AliengoEnv(**params)
     env.reset()
 
     img = env.render('rgb_array')
@@ -215,13 +219,13 @@ def main():
         for line_num, line in enumerate(f):
             # Unitree runs this demo at 500 Hz. We run at 240 Hz,
             # so double is close enough.
-            if line_num % 2 * env.n_hold_frames == 0:
+            if line_num % 2 * env.action_repeat == 0:
                 action = env.quadruped.positions_to_actions(
                     np.array(line.split(',')[2:], dtype=np.float32))
-                _, _, _, _ = env.step(action)
+                env.step(action)
                 # simulation runs at 240 Hz, so if we render every 4th frame,
                 # we get 60 fps video
-                if counter % 4 == 0:
+                if counter % 1 == 0:
                     img = env.render('rgb_array')
                     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                     img_list.append(img)

@@ -1,6 +1,6 @@
 import numpy as np
 from collections import OrderedDict
-from .utils import DummyObstacle
+from utils import DummyObstacle
 import pybullet as p
 
 
@@ -85,4 +85,4 @@ class Termination:
         return (abs(euler_angles) > np.array([x, y, z]) * np.pi).any()
 
     def timeout(self, n_seconds):
-        return self.env.eps_step_counter >= 240.0/self.env.n_hold_frames * n_seconds
+        return self.env.eps_step_counter >= 240.0/self.env.action_repeat * n_seconds
