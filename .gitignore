@@ -1,5 +1,5 @@
 # User added
-
+*.avi
 wandb/
 trained_models/
 

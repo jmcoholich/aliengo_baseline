@@ -127,7 +127,7 @@ class AliengoEnv(gym.Env):
                 self.quadruped.visualize()
 
         self.eps_step_counter += 1
-        self.quadruped.update_state(flat_ground=False, #TODO flat_ground
+        self.quadruped.update_state(flat_ground=False,  #TODO flat_ground
                                     fake_client=self.fake_client)
 
         obs = self.observe()
@@ -195,7 +195,7 @@ class AliengoEnv(gym.Env):
         return self.quadruped.render(mode=mode, client=client)
 
 
-def main():
+def main(save_video):
     """Perform check by feeding in the mocap trajectory provided by Unitree
     (linked) into the aliengo robot and
     save video. https://github.com/unitreerobotics/aliengo_pybullet
@@ -207,13 +207,15 @@ def main():
     with open(path) as f:
         params = yaml.full_load(f)
 
+    if not save_video:
+        params['render'] = True
     env = AliengoEnv(**params)
     env.reset()
-
-    img = env.render('rgb_array')
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    img_list = [img]
-    counter = 0
+    if save_video:
+        img = env.render('rgb_array')
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        img_list = [img]
+        counter = 0
 
     with open('mocap.txt', 'r') as f:
         for line_num, line in enumerate(f):
@@ -223,25 +225,31 @@ def main():
                 action = env.quadruped.positions_to_actions(
                     np.array(line.split(',')[2:], dtype=np.float32))
                 env.step(action)
-                # simulation runs at 240 Hz, so if we render every 4th frame,
-                # we get 60 fps video
-                if counter % 1 == 0:
-                    img = env.render('rgb_array')
-                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                    img_list.append(img)
-                counter += 1
-                # only count the lines that are sent to the simulation
-                # (i.e. only count p.client.stepSimulation() calls)
 
-    height, width, _ = img.shape
-    size = (width, height)
-    out = cv2.VideoWriter(
-        'test_vid.avi', cv2.VideoWriter_fourcc(*'XVID'), 60, size)
-    for img in img_list:
-        out.write(img)
-    out.release()
-    print('Video saved')
+                if save_video:
+                    # simulation runs at 240 Hz, so rendering every 4th frame
+                    # gives 60 fps video
+                    if counter % 1 == 0:
+                        img = env.render('rgb_array')
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                        img_list.append(img)
+                    counter += 1
+                    # only count the lines that are sent to the simulation
+                    # (i.e. only count p.client.stepSimulation() calls)
+    if save_video:
+        height, width, _ = img.shape
+        size = (width, height)
+        out = cv2.VideoWriter(
+            'test_vid.avi', cv2.VideoWriter_fourcc(*'XVID'), 60, size)
+        for img in img_list:
+            out.write(img)
+        out.release()
+        print('Video saved')
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--save_video", default=False)
+    args = parser.parse_args()
+    main(args.save_video)
