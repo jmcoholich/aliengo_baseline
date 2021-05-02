@@ -10,7 +10,7 @@ import time
 import warnings
 import sys
 
-from footstep_param import FootstepTargets
+from footstep_generator import FootstepGenerator
 
 
 class AliengoQuadruped:
@@ -109,7 +109,9 @@ class AliengoQuadruped:
         #     self.client.enableJointForceTorqueSensor(self.quadruped, joint, enableSensor=True)
 
         if footstep_params is not None:
-            self.footstep_generator = FootstepTargets(footstep_params, self)
+            self.footstep_generator = FootstepGenerator(footstep_params,
+                                                        self,
+                                                        vis=self.vis)
 
         self.max_joint_vel = np.ones(self.n_motors) * 40.0  # from URDF
 
@@ -343,10 +345,10 @@ class AliengoQuadruped:
     #             + 2.0 * wide_step_rew # 0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew
     #     return total_rew, rew_dict
 
-    def pmtg_action(self, time, action):
-        self.set_trajectory_parameters(time, action[0], action[1],
-                                       action[2], action[3], action[4],
-                                       action[5], action[6:])
+    # def pmtg_action(self, time, action):
+    #     self.set_trajectory_parameters(time, action[0], action[1],
+    #                                    action[2], action[3], action[4],
+    #                                    action[5], action[6:])
 
     # def get_privileged_info(self, fake_client=None, flat_ground=False, ray_start=100):
     #     '''
@@ -446,6 +448,8 @@ class AliengoQuadruped:
 
     def trajectory_generator(self, time, amplitude, walking_height,
                              frequency, params):
+        # TODO eventually make trajectory generator its own object in a
+        # separate file
         assert time >= 0.0
         if params['gait'] == 'trot':
             # FR, FL, RR, RL
