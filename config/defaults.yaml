@@ -9,7 +9,7 @@ gail: False # do imitation learning with  gail
 gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
 gail_batch_size: 128
 gail_epoch: 5
-lr: 3.0e-5
+lr: 6.0e-5
 eps: 1.0e-5 # RMSprop optimizer epsilon (default: 1e-5)
 alpha: 0.99 # RMSprop optimizer apha (default: 0.99)
 gamma: 0.99
