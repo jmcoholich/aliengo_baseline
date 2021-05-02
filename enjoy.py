@@ -217,10 +217,10 @@ obs = env.reset()
 #             torsoId = i
 
 if args.save_vid:
-    assert 240.0%env.venv.venv.envs[0].n_hold_frames == 0
+    assert 240.0%env.venv.venv.envs[0].action_repeat == 0
     global FPS
     global VIDEO_SPEED
-    FPS = int(240.0/env.venv.venv.envs[0].n_hold_frames)
+    FPS = int(240.0/env.venv.venv.envs[0].action_repeat)
     VIDEO_SPEED = 1.0
     img_array = []
     counter = 0
@@ -228,7 +228,7 @@ if args.save_vid:
     total_rew = 0.0
 
 if yaml_args.env_name == 'aliengo':
-    loop_time = 1/240. * env.venv.venv.envs[0].n_hold_frames * 1.0/args.speed
+    loop_time = 1/240. * env.venv.venv.envs[0].action_repeat * 1.0/args.speed
 else:
     loop_time = 0.01
 
