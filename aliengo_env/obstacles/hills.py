@@ -41,6 +41,11 @@ class Hills():
 
         self.create_initial_mesh()
 
+    def bounds_termination(self):
+        raise NotImplementedError
+
+    def timeout_termination(self):
+        raise NotImplementedError
 
     def create_initial_mesh(self):
         vertices = self.generate_vertices()
@@ -48,20 +53,20 @@ class Hills():
         meshScale = [1.0/self.mesh_res, 1.0/self.mesh_res, self.hills_height]
         heightfieldTextureScaling = self.mesh_res/2.
 
-        self.terrain = self.client.createCollisionShape(p.GEOM_HEIGHTFIELD, 
-                                                    meshScale=meshScale, 
+        self.terrain = self.client.createCollisionShape(p.GEOM_HEIGHTFIELD,
+                                                    meshScale=meshScale,
                                                     heightfieldTextureScaling=heightfieldTextureScaling,
                                                     heightfieldData=vertices.flatten(),
                                                     numHeightfieldRows=self.mesh_width + 1,
                                                     numHeightfieldColumns=self.mesh_length + 1)
-        self.fake_terrain = self.fake_client.createCollisionShape(p.GEOM_HEIGHTFIELD, 
-                                                    meshScale=meshScale, 
+        self.fake_terrain = self.fake_client.createCollisionShape(p.GEOM_HEIGHTFIELD,
+                                                    meshScale=meshScale,
                                                     heightfieldTextureScaling=heightfieldTextureScaling,
                                                     heightfieldData=vertices.flatten(),
                                                     numHeightfieldRows=self.mesh_width + 1,
                                                     numHeightfieldColumns=self.mesh_length + 1)
-    
-        
+
+
         ori = self.client.getQuaternionFromEuler([0, 0, -np.pi/2.])
         pos = [self.hills_length/2. +0.5 , 0, self.hills_height/2.]
         self.client.createMultiBody(baseCollisionShapeIndex=self.terrain, baseOrientation=ori, basePosition=pos)
@@ -70,21 +75,21 @@ class Hills():
 
     def reset(self):
         '''Creates an identical hills mesh using Perlin noise. Added to client and fake client'''
-        
+
         vertices = self.generate_vertices()
         meshScale = [1.0/self.mesh_res, 1.0/self.mesh_res, self.hills_height]
         heightfieldTextureScaling = self.mesh_res/2.
 
-        
-        self.client.createCollisionShape(p.GEOM_HEIGHTFIELD, 
-                                                    meshScale=meshScale, 
+
+        self.client.createCollisionShape(p.GEOM_HEIGHTFIELD,
+                                                    meshScale=meshScale,
                                                     heightfieldTextureScaling=heightfieldTextureScaling,
                                                     heightfieldData=vertices.flatten(),
                                                     numHeightfieldRows=self.mesh_width + 1,
                                                     numHeightfieldColumns=self.mesh_length + 1,
                                                     replaceHeightfieldIndex=self.terrain)
-        self.fake_client.createCollisionShape(p.GEOM_HEIGHTFIELD, 
-                                                    meshScale=meshScale, 
+        self.fake_client.createCollisionShape(p.GEOM_HEIGHTFIELD,
+                                                    meshScale=meshScale,
                                                     heightfieldTextureScaling=heightfieldTextureScaling,
                                                     heightfieldData=vertices.flatten(),
                                                     numHeightfieldRows=self.mesh_width + 1,
@@ -109,7 +114,7 @@ class Hills():
                                             repeatx=self.mesh_length + 1,
                                             repeaty=self.mesh_width + 1,
                                             base=self.base) # base is the seed
-        # Uncomment below to visualize image of terrain map                                            
+        # Uncomment below to visualize image of terrain map
         # from PIL import Image
         # Image.fromarray(((np.interp(vertices, (vertices.min(), vertices.max()), (0, 255.0))>128)*255).astype('uint8'), 'L').show()
         vertices = np.interp(vertices, (vertices.min(), vertices.max()), (0, 1.0))

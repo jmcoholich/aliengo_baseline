@@ -65,7 +65,7 @@ class AliengoQuadruped:
 
         self._init_vis = True  # TODO get rid of this
 
-        self.num_foot_terrain_scan_points = 10 # per foot
+        self.num_foot_terrain_scan_points = 10  # per foot
         self.vis = vis
         if vis:
             self.init_vis()
@@ -77,7 +77,8 @@ class AliengoQuadruped:
         self.applied_torques = np.zeros(12)
 
         self.base_position = np.zeros(3)
-        self.base_orientation = np.zeros(4)
+        self.base_orientation = np.zeros(4)  # quaternions
+        self.base_euler  # euler angles
         self.base_vel = np.zeros(3)
         self.base_avel = np.zeros(3)
         self.foot_normal_forces = np.zeros(4)
@@ -109,6 +110,8 @@ class AliengoQuadruped:
 
         if footstep_params is not None:
             self.footstep_generator = FootstepTargets(footstep_params, self)
+
+        self.max_joint_vel = np.ones(self.n_motors) * 40.0  # from URDF
 
     def init_vis(self):
         small_ball = self.client.createVisualShape(
@@ -166,6 +169,8 @@ class AliengoQuadruped:
         temp = self.client.getBasePositionAndOrientation(self.quadruped)
         self.base_position = np.array(temp[0])
         self.base_orientation = np.array(temp[1])
+        self.base_euler = np.array(self.client.getEulerfromQuaternion(
+            self.base_orientation))
         self.base_vel, self.base_avel = self.client.getBaseVelocity(
             self.quadruped)
         self.foot_normal_forces = self.get_foot_contacts()
@@ -460,7 +465,7 @@ class AliengoQuadruped:
             foot_positions[i] = np.array([x, 0, z])
 
         foot_positions[[0, 2], 1] -= params['lateral_offset']
-        foot_positions[[1 ,3], 1] += params['lateral_offset']
+        foot_positions[[1, 3], 1] += params['lateral_offset']
         foot_positions[:, 0] += params['x_offset']
         joint_targets = self.set_foot_positions(foot_positions,
                                                 return_joint_targets=True)
@@ -532,7 +537,6 @@ class AliengoQuadruped:
         https://robotics.sciencemag.org/content/robotics/
         suppl/2020/10/19/5.47.eabc5986.DC1/abc5986_SM.pdf
         """
-
         assert 0 <= phase < 2 * np.pi, 'phase must be in [0, 2 * pi)'
         k = 2 * (phase - np.pi) / np.pi
         if -2 <= k < 0:
@@ -957,21 +961,19 @@ class AliengoQuadruped:
         points = self.client.getContactPoints(self.quadruped, self.quadruped)
         return len(points)
 
-    def set_joint_position_targets(self, positions, true_positions=False, time=None, params=None):
-        '''
-        Takes positions in range of [-1, 1]. These positions are mapped to the actual range of joint positions for
-        each joint of the robot.
-        The time argument is not used; it is just to be consistent with other action functions.
-        #TODO how to use params here
-        '''
-
+    def set_joint_position_targets(self, positions, true_positions=False):
+        """Take positions in range of [-1, 1] or true positions.
+        Map these to true joint positions and set them
+        as joint position targets.
+        """
         assert isinstance(positions, np.ndarray)
-
         if not true_positions:
-            assert ((-1.0 <= positions) & (positions <= 1.0)).all(), '\nposition received: ' + str(positions) + '\n'
+            assert ((-1.0 <= positions) & (positions <= 1.0)).all(), \
+                '\nposition received: ' + str(positions) + '\n'
             positions = self.actions_to_positions(positions)
 
-        self.client.setJointMotorControlArray(self.quadruped,
+        self.client.setJointMotorControlArray(
+            self.quadruped,
             self.motor_joint_indices,
             controlMode=p.POSITION_CONTROL,
             targetPositions=positions,
@@ -979,24 +981,22 @@ class AliengoQuadruped:
             positionGains=self.kp * np.ones(self.n_motors),
             velocityGains=self.kd * np.ones(self.n_motors))
 
-        self.true_joint_position_target_history.pop()
-        self.true_joint_position_target_history.insert(0, positions)
+        # self.true_joint_position_target_history.pop()
+        # self.true_joint_position_target_history.insert(0, positions)
 
 
     def positions_to_actions(self, positions):
-        '''Maps actual robot joint positions in radians to the range of [-1.0, 1.0]'''
-
+        """Maps actual robot joint positions in radians
+        to the range of [-1.0, 1.0]
+        """
         return (positions - self.position_mean) / (self.position_range * 0.5)
 
-
     def actions_to_positions(self, actions):
-        '''
-        Takes actions or normalized positions in the range of [-1.0, 1.0] and maps them to actual joint positions in
+        """Take actions (normalized positions) in the range
+        of [-1.0, 1.0] and maps them to actual joint positions in
         radians.
-        '''
-
+        """
         return actions * (self.position_range * 0.5) + self.position_mean
-
 
     def _find_position_bounds(self):
         positions_lb = np.zeros(self.n_motors)
@@ -1018,30 +1018,6 @@ class AliengoQuadruped:
         position_range = positions_ub - positions_lb
 
         return positions_lb, positions_ub, position_mean, position_range
-
-
-    def get_joint_position_bounds(self):
-        '''Returns lower and upper bounds of the allowable joint positions as a numpy array. '''
-
-        return -np.ones(self.n_motors), np.ones(self.n_motors)
-
-
-    def get_joint_velocity_bounds(self):
-        '''The value 40 is from the Aliengo URDF.'''
-
-        return -np.ones(self.n_motors) * 40, np.ones(self.n_motors) * 40
-
-
-    def get_joint_torque_bounds(self):
-        '''
-        Returns lower and upper bounds of the allowable joint torque as a numpy array.
-        Note: I am not sure if I need to distinguish between the bounds of the torque you are allowed to set vs the
-        bounds of the applied torque that can occur in simulation. In other words, does pybullet allow the applied
-        torque to sometimes go slightly out of the bounds of self.max_torque?
-         '''
-
-        return - np.ones(self.n_motors) * self.max_torque, np.ones(self.n_motors) * self.max_torque
-
 
     # def get_joint_states(self):
     #     '''Note: Reaction forces will return all zeros unless a torque sensor has been set'''

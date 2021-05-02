@@ -3,8 +3,8 @@ import pybullet as p
 
 
 class Stairs():
-    def __init__(self, 
-                client, 
+    def __init__(self,
+                client,
                 fake_client,
                 step_height=0.25, # [0.0, 0.5?] unknown how high we can really go Default = 0.25
                 step_length=2.0): # [0.25, 3.0] Default = 2.0):
@@ -24,6 +24,11 @@ class Stairs():
 
         self.create_initial()
 
+    def bounds_termination(self):
+        raise NotImplementedError
+
+    def timeout_termination(self):
+        raise NotImplementedError
 
     def reset(self):
         total_len = 0
@@ -49,10 +54,10 @@ class Stairs():
     def create_initial(self):
         """ Create maximum number of shapes and put them in simulation, then just reposition them upon reset """
 
-        
+
         # use the same collision shape for every step
-        halfExtents = [(self.step_length + self.step_length_range/2. + 0.01) / 2., 
-                        self.stairs_width/2., 
+        halfExtents = [(self.step_length + self.step_length_range/2. + 0.01) / 2.,
+                        self.stairs_width/2.,
                         (self.step_height + self.step_height_range/2. + 0.01 )/2.]
         _id = self.client.createCollisionShape(p.GEOM_BOX, halfExtents=halfExtents)
         fake_id = self.fake_client.createCollisionShape(p.GEOM_BOX, halfExtents=halfExtents)
@@ -69,14 +74,14 @@ class Stairs():
 
 
     # def _create_stairs(self):
-        
+
 
 
     # def _is_state_terminal(self): #TODO
     #     ''' Calculates whether to end current episode due to failure based on current state. '''
 
-    #     quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=[np.pi/2.0]*3, 
-    #                                                                         height_ub=np.inf) # stairs can go very high 
+    #     quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=[np.pi/2.0]*3,
+    #                                                                         height_ub=np.inf) # stairs can go very high
     #     timeout = (self.eps_step_counter >= self.eps_timeout) or \
     #                 (self.quadruped.base_position[0] >= self.stairs_length - 2.0)
     #     y_out_of_bounds = not (-self.stairs_width/2. < self.quadruped.base_position[1] < self.stairs_width/2.)
@@ -91,14 +96,14 @@ class Stairs():
 
 if __name__ == '__main__':
     '''This test open the simulation in GUI mode for viewing the generated terrain, then saves a rendered image of each
-    client for visual verification that the two are identical. Then the script just keeps generating random terrains 
+    client for visual verification that the two are identical. Then the script just keeps generating random terrains
     for viewing. '''
 
     env = gym.make('gym_aliengo:AliengoStairs-v0', render=True, realTime=True)
     imwrite('client_render.png', cvtColor(env.render(client=env.client, mode='rgb_array'), COLOR_RGB2BGR))
     imwrite('fake_client_render.png', cvtColor(env.render(client=env.fake_client, mode='rgb_array'), COLOR_RGB2BGR))
 
-    
+
     while True:
         env.reset()
         time.sleep(5.0)

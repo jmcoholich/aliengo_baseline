@@ -11,7 +11,7 @@ class Steps():
                 fake_client,
                 rows_per_m=2.0, # range from [1.0 to 5.0] (easy to hard) default=2.0
                 terrain_height_range=0.25, # range from [0.0, 0.375] (easy to hard) default=0.25
-                terrain_width=10.0, 
+                terrain_width=10.0,
                 terrain_length=20.0):
 
 
@@ -21,22 +21,27 @@ class Steps():
         # Terrain parameters, all units in meters
         assert rows_per_m > 0.0 and rows_per_m < 10.0
         self.row_width = 1.0/rows_per_m
-        self.terrain_height_range = terrain_height_range # +/- half of this value to the height mean 
+        self.terrain_height_range = terrain_height_range # +/- half of this value to the height mean
         self.terrain_length = terrain_length
         self.terrain_width = terrain_width
         self.terrain_height = terrain_height_range/2.0 + 0.01 # this is just the mean height of the blocks
 
-        self.block_length_range = self.row_width/2. # the mean is set to the same as row_width. 
+        self.block_length_range = self.row_width/2. # the mean is set to the same as row_width.
         self.ramp_distance = self.terrain_height * 10
         self.ray_start_height = self.terrain_height + self.terrain_height_range/2. + 1.
         self.create_initial()
 
-    
+    def bounds_termination(self):
+        raise NotImplementedError
+
+    def timeout_termination(self):
+        raise NotImplementedError
+
     def reset(self):
 
         self.shuffle_shapes()
         height_values = np.linspace(-self.terrain_height_range/2., self.terrain_height_range/2., self.n_shapes)
-        
+
         i = 0
         for row in range(int(self.terrain_width/self.row_width) + 1):
             total_len = 0.0
@@ -72,13 +77,13 @@ class Steps():
         length_lb = np.max((self.row_width - self.block_length_range/2., .05))
         length_values = np.linspace(length_lb,
                                     self.row_width + self.block_length_range/2.,
-                                    self.n_shapes)      
+                                    self.n_shapes)
 
-        # generate n_shapes different block lengths                            
+        # generate n_shapes different block lengths
         shapeId = np.zeros(self.n_shapes, dtype=np.int)
         fake_shapeId = np.zeros(self.n_shapes, dtype=np.int)
         for i in range(len(length_values)):
-            halfExtents=[length_values[i]/2., self.row_width/2., self.terrain_height_range/2.] 
+            halfExtents=[length_values[i]/2., self.row_width/2., self.terrain_height_range/2.]
             shapeId[i] = self.client.createCollisionShape(p.GEOM_BOX, halfExtents=halfExtents)
             fake_shapeId[i] = self.fake_client.createCollisionShape(p.GEOM_BOX, halfExtents=halfExtents)
 
@@ -100,7 +105,7 @@ class Steps():
             j += 1
 
     def shuffle_shapes(self):
-        """Shuffles the order of the arrays containing the multibody Ids. 
+        """Shuffles the order of the arrays containing the multibody Ids.
         Applies same reordering to client and fake_client."""
 
         x = np.random.permutation(self.n_bodies)
@@ -112,8 +117,8 @@ class Steps():
     # def _is_state_terminal(self): #TODO
     #     ''' Calculates whether to end current episode due to failure based on current state. '''
 
-    #     quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=[np.pi/2.0]*3, 
-    #                             height_ub=0.8 + self.terrain_height_range + 0.01) 
+    #     quadruped_done, termination_dict = self.quadruped.is_state_terminal(flipping_bounds=[np.pi/2.0]*3,
+    #                             height_ub=0.8 + self.terrain_height_range + 0.01)
     #     timeout = (self.eps_step_counter >= self.eps_timeout) or \
     #                 (self.quadruped.base_position[0] >= self.terrain_length - 1.0)
     #     y_out_of_bounds = not (-self.terrain_width/2. + 0.25 < self.quadruped.base_position[1] < \
@@ -130,14 +135,14 @@ class Steps():
 
 if __name__ == '__main__':
     '''This test open the simulation in GUI mode for viewing the generated terrain, then saves a rendered image of each
-    client for visual verification that the two are identical. Then the script just keeps generating random terrains 
+    client for visual verification that the two are identical. Then the script just keeps generating random terrains
     for viewing. '''
 
     env = gym.make('gym_aliengo:AliengoSteps-v0', render=True, realTime=True)
     imwrite('client_render.png', cvtColor(env.render(client=env.client, mode='rgb_array'), COLOR_RGB2BGR))
     imwrite('fake_client_render.png', cvtColor(env.render(client=env.fake_client, mode='rgb_array'), COLOR_RGB2BGR))
 
-    
+
     while True:
         env.reset()
         time.sleep(5.0)

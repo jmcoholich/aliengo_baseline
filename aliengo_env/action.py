@@ -14,7 +14,7 @@ class Action():
         """The keys should be function handles that the actions and time are be passed directly to as the only arg
         So far, there are no actions which have parameters other than bounds"""
         self.allowed = {'Iscen_PMTG': self.quadruped.iscen_pmtg,  # TODO fix this!!
-                        'joint_positions': self.quadruped.set_joint_position_targets, 
+                        'joint_positions': self.set_joint_position_targets,
                         'one_leg_only': self.one_leg}
         self.action_lengths = {'Iscen_PMTG': 15,
                                'joint_positions': 12,
@@ -43,3 +43,6 @@ class Action():
         positions = self.quadruped.positions_to_actions(positions)
         positions[2] = action.item()
         self.quadruped.set_joint_position_targets(positions)
+
+    def set_joint_position_targets(self, action, time, params):
+        self.quadruped.set_joint_position_targets(action)
