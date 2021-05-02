@@ -19,7 +19,7 @@ class Observation():
             'base_roll': self.get_base_roll,
             'base_pitch': self.get_base_pitch,
             'base_yaw': self.get_base_yaw,
-            'trajectory_generator_phases': self.get_tg_phases,
+            'trajectory_generator_phase': self.get_tg_phase,
             'current_footstep_foot': self.get_current_foot,
             'next_footstep_distance': self.get_next_footstep_distance,
             'noise': self.noise,
@@ -34,7 +34,7 @@ class Observation():
             'base_roll': 1,
             'base_pitch': 1,
             'base_yaw': 1,
-            'trajectory_generator_phases': 8,
+            'trajectory_generator_phase': 2,
             'current_footstep_foot': 1,
             'next_footstep_distance': 3,
             'noise': 1,  # this is arbitrary
@@ -78,11 +78,13 @@ class Observation():
     def get_base_yaw(self):
         return self.quadruped.base_euler[np.newaxis, 2]
 
-    def get_tg_phases(self):
-        return np.concatenate((np.sin(self.quadruped.phases), np.cos(self.quadruped.phases)))
+    def get_tg_phase(self):
+        return np.array([np.sin(self.quadruped.phases[0]),
+                         np.cos(self.quadruped.phases[0])])
 
     def get_current_foot(self):
-        return np.array([self.quadruped.footstep_generator.current_footstep % 4])
+        return np.array([
+            self.quadruped.footstep_generator.current_footstep % 4])
 
     def get_next_footstep_distance(self):
         return self.quadruped.footstep_generator.get_current_footstep_distance()

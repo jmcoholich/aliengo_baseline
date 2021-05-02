@@ -24,9 +24,23 @@ observation_parts: #TODO enumerate all possible types that I can even put here. 
 # eventually add pmtg and footstep_param stuff
 # null means to use the widest bounds allowed ie no additional restriction imposed
 action_space:
-  joint_positions: #TODO implement the bounds and other action spaces.
-    lb: null
-    ub: null
+  Iscen_PMTG: # This pmtg is the original one from "Policies Modulating Trajectory Generators"
+    gait: trot # allowed: trot, walk
+    amplitude_bounds:
+      lb: 0.0
+      ub: 0.3
+    walking_height_bounds: # this is just negative step_bottom
+      lb: 0.25
+      ub: 0.6
+    frequency_bounds:
+      lb: 0.75
+      ub: 2.00
+    residual_bounds:
+      lb: -0.1
+      ub: 0.1
+    step_height: 0.15
+    x_offset: 0.02109375
+    lateral_offset: 0.075
 
 reward_parts: #TODO
   # reward_type: coefficient

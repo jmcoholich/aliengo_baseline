@@ -446,22 +446,20 @@ class AliengoQuadruped:
 
     def trajectory_generator(self, time, amplitude, walking_height,
                              frequency, params):
-        # TODO handle the action norming and thoroughly debug this
-        assert time >= 0
-
+        assert time >= 0.0
         if params['gait'] == 'trot':
+            # FR, FL, RR, RL
             phase_offsets = np.array([0, np.pi, np.pi, 0])
         elif params['gait'] == 'walk':
-            # FR, FL, RR, RL
             phase_offsets = np.array([0.0, 1.0, 0.5, 1.5]) * np.pi
 
-        phases = (phase_offsets + frequency * 2 * np.pi * time) % (2 * np.pi)
-        self.phases = phases
+        self.phases = (phase_offsets + frequency * 2 * np.pi * time) % (2 * np.pi)
 
         foot_positions = np.zeros((4, 3))
         for i in range(4):
-            z = params['step_height'] * self._foot_step_ztraj(phases[i]) - walking_height
-            x = np.cos(phases[i]) * amplitude
+            z = (params['step_height'] * self._foot_step_ztraj(self.phases[i])
+                 - walking_height)
+            x = np.cos(self.phases[i]) * amplitude
             foot_positions[i] = np.array([x, 0, z])
 
         foot_positions[[0, 2], 1] -= params['lateral_offset']
@@ -474,9 +472,8 @@ class AliengoQuadruped:
     def iscen_pmtg(self, action, time, params):  # TODO correct this normalize
         """The action should consist of amplitude, walking_height,
         frequency, plus 12 joint positions residuals,
-        all properly mapped to [-1, 1]
+        all in the range of [-1, 1]
         """
-
         (amplitude, walking_height, frequency,
             true_residuals) = self._unpack_iscen_pmtg_args(action, params)
         true_joint_positions = self.trajectory_generator(
@@ -485,30 +482,36 @@ class AliengoQuadruped:
                                         true_positions=True)
 
     def _unpack_iscen_pmtg_args(self, action, params):
-        assert params['amplitude_bounds']['ub'] >= params['amplitude_bounds']['lb']
-        assert params['walking_height_bounds']['ub'] >= params['walking_height_bounds']['lb']
-        assert params['frequency_bounds']['ub'] >= params['frequency_bounds']['lb']
-        assert params['residual_bounds']['ub'] >= params['residual_bounds']['lb']
+        """Check all action lower bounder are less than or equal to
+        upper bounds as specified in yaml file. Then, map action
+        from [-1, 1] to their true values.
+        """
+        assert (params['amplitude_bounds']['ub']
+                >= params['amplitude_bounds']['lb'])
+        assert (params['walking_height_bounds']['ub']
+                >= params['walking_height_bounds']['lb'])
+        assert (params['frequency_bounds']['ub']
+                >= params['frequency_bounds']['lb'])
+        assert (params['residual_bounds']['ub']
+                >= params['residual_bounds']['lb'])
 
         amplitude = (action[0] * (params['amplitude_bounds']['ub']
-                     - params['amplitude_bounds']['lb']) * 0.5
+                                  - params['amplitude_bounds']['lb']) * 0.5
                      + (params['amplitude_bounds']['lb']
-                     + params['amplitude_bounds']['ub']) * 0.5)
+                        + params['amplitude_bounds']['ub']) * 0.5)
         walking_height = (action[1] * (params['walking_height_bounds']['ub']
-                          - params['walking_height_bounds']['lb'])
+                                       - params['walking_height_bounds']['lb'])
                           * 0.5 + (params['walking_height_bounds']['lb']
-                          + params['walking_height_bounds']['ub']) * 0.5)
+                                   + params['walking_height_bounds']['ub'])
+                          * 0.5)
         frequency = (action[2] * (params['frequency_bounds']['ub']
-                     - params['frequency_bounds']['lb'])
-                     * 0.5 + (params['frequency_bounds']['lb']
-                     + params['frequency_bounds']['ub']) * 0.5)
-        residuals = (action[3:] * (params['residual_bounds']['ub']
-                     - params['residual_bounds']['lb'])
-                     * 0.5 * self.position_range * 0.5)
-        return amplitude, walking_height, frequency, residuals
-
-
-
+                                  - params['frequency_bounds']['lb']) * 0.5
+                     + (params['frequency_bounds']['lb']
+                        + params['frequency_bounds']['ub']) * 0.5)
+        true_residuals = (action[3:] * (params['residual_bounds']['ub']
+                                        - params['residual_bounds']['lb'])
+                          * 0.5 * self.position_range * 0.5)
+        return amplitude, walking_height, frequency, true_residuals
 
     # def get_pmtg_action_bounds(self):
     #     '''Returns bounds of actions to set_trajectory_parameters. I don't really know what these should be. (I don't
@@ -660,6 +663,7 @@ class AliengoQuadruped:
         self.last_global_foot_target = commanded_global_foot_positions
         if self.vis:
             self.visualize()
+        return None
 
     def visualize(self):
         """green spheres are commanded positions, red spheres are actual positions.
@@ -1287,24 +1291,56 @@ def test_calf_joint_torques(client, quadruped):
         time.sleep(1.0/240)
 
 
+def main():
+    from env import AliengoEnv
+    import yaml
+    import time
+
+    path = os.path.join(os.path.dirname(__file__),
+                        '../config/TEST_pmtg_env.yaml')
+    with open(path) as f:
+        params = yaml.full_load(f)
+    params['render'] = True
+    params['fixed'] = False
+    env = AliengoEnv(**params)
+    env.reset()
+    """The action should consist of amplitude, walking_height,
+        frequency, plus 12 joint positions residuals,
+        all in the range of [-1, 1]
+        """
+    amplitude = np.array([0.1])
+    walking_height = np.array([0.45])
+    frequency = np.array([1.0])
+    residuals = np.zeros(12)
+    action = np.concatenate((amplitude, walking_height, frequency, residuals))
+    while True:
+        time.sleep(1/240. * env.action_repeat)
+        env.step(action)
+
 
 if __name__ == '__main__':
-    # plot_trajectory()
 
-    # set up the quadruped in a pybullet simulation
-    from pybullet_utils import bullet_client as bc
-    client = bc.BulletClient(connection_mode=p.GUI)
-    client.setTimeStep(1/240.)
-    client.setGravity(0,0,-9.8)
-    client.setRealTimeSimulation(0) # this has no effect in DIRECT mode, only GUI mode
-    plane = client.loadURDF('./urdf/plane.urdf')
-    # set kp = 1.0 just for when I'm tracking, to eliminate it as a *large* source of error
-    quadruped = AliengoQuadruped(client, fixed=True, fixed_orientation=[0] * 3, fixed_position=[0.15,-0.15,0.7], kp=1.0,
-                        vis=False, gait_type='trot')
+    # import argparse
+    # parser = argparse.ArgumentParser()
+    # args = parser.parse_args()
+    main()
+    # import sys; sys.exit()
+    # # plot_trajectory()
 
-    # sine_tracking_test(client, quadruped)
-    # floor_tracking_test(client, quadruped)
-    trajectory_generator_test(client, quadruped) # tracking performance is easily increased by setting kp=1.0
+    # # set up the quadruped in a pybullet simulation
+    # from pybullet_utils import bullet_client as bc
+    # client = bc.BulletClient(connection_mode=p.GUI)
+    # client.setTimeStep(1/240.)
+    # client.setGravity(0,0,-9.8)
+    # client.setRealTimeSimulation(0) # this has no effect in DIRECT mode, only GUI mode
+    # plane = client.loadURDF('./urdf/plane.urdf')
+    # # set kp = 1.0 just for when I'm tracking, to eliminate it as a *large* source of error
+    # quadruped = AliengoQuadruped(client, fixed=True, fixed_orientation=[0] * 3, fixed_position=[0.15,-0.15,0.7], kp=1.0,
+    #                     vis=False, gait_type='trot')
+
+    # # sine_tracking_test(client, quadruped)
+    # # floor_tracking_test(client, quadruped)
+    # trajectory_generator_test(client, quadruped) # tracking performance is easily increased by setting kp=1.0
     # axes_shift_function_test(client, quadruped) # error should be about 2e-17
     # test_disturbances(client, quadruped) # unfix the base to actually see results of disturbances
     # quadruped.reset_joint_positions()
@@ -1316,20 +1352,20 @@ if __name__ == '__main__':
     #     print(time.time() - begin)
 
 
-    # test_calf_joint_torques(client, quadruped)
+    # # test_calf_joint_torques(client, quadruped)
 
-    foot_positions = np.zeros((4, 3))
-    lateral_offset = 0.11
-    foot_positions[:,-1] = -0.4
-    foot_positions[[0,2], 1] = -lateral_offset
-    foot_positions[[1,3], 1] = lateral_offset
-    quadruped.reset_joint_positions()
-    quadruped._wide_step_rew()
-    while True:
-        client.stepSimulation()
-        quadruped.set_foot_positions(foot_positions)
-        print(quadruped.self_collision(), 'asdf')
-        time.sleep(1./240)
+    # foot_positions = np.zeros((4, 3))
+    # lateral_offset = 0.11
+    # foot_positions[:,-1] = -0.4
+    # foot_positions[[0,2], 1] = -lateral_offset
+    # foot_positions[[1,3], 1] = lateral_offset
+    # quadruped.reset_joint_positions()
+    # quadruped._wide_step_rew()
+    # while True:
+    #     client.stepSimulation()
+    #     quadruped.set_foot_positions(foot_positions)
+    #     print(quadruped.self_collision(), 'asdf')
+    #     time.sleep(1./240)
 
     # while True:
     #     quadruped.get_privledged_terrain_info(client)

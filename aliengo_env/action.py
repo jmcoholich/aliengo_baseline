@@ -13,7 +13,7 @@ class Action():
         self.quadruped = quadruped
         """The keys should be function handles that the actions and time are be passed directly to as the only arg
         So far, there are no actions which have parameters other than bounds"""
-        self.allowed = {'Iscen_PMTG': self.quadruped.iscen_pmtg,  # TODO fix this!!
+        self.allowed = {'Iscen_PMTG': self.quadruped.iscen_pmtg,
                         'joint_positions': self.set_joint_position_targets,
                         'one_leg_only': self.one_leg}
         self.action_lengths = {'Iscen_PMTG': 15,
@@ -22,16 +22,8 @@ class Action():
         assert self.action_space in self.allowed.keys()
         self.action_function = self.allowed[self.action_space]
 
-        # the default action bounds are plus/minus 1 for all actions -- by design
-        if self.action_space_params['lb'] is None:
-            self.action_lb = -np.ones(self.action_lengths[self.action_space])
-        else:
-            self.action_lb = self.action_space_params['lb']
-
-        if self.action_space_params['ub'] is None:
-            self.action_ub = np.ones(self.action_lengths[self.action_space])
-        else:
-            self.action_ub = self.action_space_params['ub']
+        self.action_lb = -np.ones(self.action_lengths[self.action_space])
+        self.action_ub = np.ones(self.action_lengths[self.action_space])
 
     def __call__(self, action, time):
         self.action_function(action, time=time, params=self.action_space_params)
