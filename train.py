@@ -1,11 +1,12 @@
+import os
 import argparse
 from warnings import warn as warn_
 
 import torch
 import yaml
-import os
 
 from pytorch_a2c_ppo_acktr_gail.main import main as ppo_main
+
 
 def warn(text):
     warn_('\033[93m' + text + '\033[0m')
@@ -30,8 +31,21 @@ def get_params(config_yaml_path):
     return args
 
 
+def check_if_overwriting(config):
+    """Ask user if they are sure they want to overwrite trained_model."""
+    path = os.path.join('./trained_models', config + '.pt')
+    if os.path.exists(path):
+        warn("\nThe trained model for this config already exists "
+             "on this machine. Overwrite it? (y/n)")
+        answer = input().lower()
+        if answer == 'y':
+            return
+        if answer == 'n':
+            os.sys.exit()
+            return
 
-def main(): #TODO add a vis flag for training. (just to make sure the env is created correctly and whatnot)
+
+def main():  # TODO add a vis flag for training. (just to make sure the env is created correctly and whatnot)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config",
                         help="specify name of yaml config file. If none is given, use default.yaml",
@@ -44,6 +58,8 @@ def main(): #TODO add a vis flag for training. (just to make sure the env is cre
     args = parser.parse_args()
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
+    else:
+        check_if_overwriting(args.config)
     main_args = get_params(args.config)
     ppo_main(main_args, args.config, args.resume)
 
