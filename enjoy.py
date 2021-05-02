@@ -154,6 +154,7 @@ args = parser.parse_args()
 
 yaml_args = get_params(args.config)
 yaml_args.env_params['render'] = not args.save_vid
+yaml_args.env_params['vis'] = args.vis
 
 env = make_vec_envs(
     yaml_args.env_name,

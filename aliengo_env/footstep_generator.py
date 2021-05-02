@@ -17,6 +17,7 @@ class FootstepGenerator:
         self.client = self.quadruped.client
         if self.vis:
             self.curr_step_body = None
+            self.step_body_ids = []
 
     def generate_footsteps(self, params):
         """Stochastically generate footsteps in a straight line
@@ -73,9 +74,13 @@ class FootstepGenerator:
                 radius=0.03,
                 length=0.1,
                 rgbaColor=[0, 1.0, 0, 1.0])
+
+            self.step_body_ids = []
             for i in range(self.footsteps.shape[0]):
-                self.client.createMultiBody(baseVisualShapeIndex=shape,
-                                            basePosition=self.footsteps[i])
+                id_ = self.client.createMultiBody(
+                    baseVisualShapeIndex=shape,
+                    basePosition=self.footsteps[i])
+                self.step_body_ids.append(id_)
                 self.client.addUserDebugText(str(i), self.footsteps[i])
             self.curr_step_body = self.client.createMultiBody(
                 baseVisualShapeIndex=curr_step_shape,
@@ -134,6 +139,13 @@ class FootstepGenerator:
         return self.current_footstep == len(self.footsteps)
 
     def reset(self):
+        if self.vis:
+            for i in range(len(self.step_body_ids)):
+                self.client.removeBody(self.step_body_ids[i])
+                # self.client.removeBody(self.text_ids[i])
+            if self.curr_step_body is not None:
+                self.client.removeBody(self.curr_step_body)
+                self.client.removeAllUserDebugItems()
         self.current_footstep = 0
         self.generate_footsteps(self.params)
 
