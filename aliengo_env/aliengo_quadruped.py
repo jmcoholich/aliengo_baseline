@@ -78,7 +78,7 @@ class AliengoQuadruped:
 
         self.base_position = np.zeros(3)
         self.base_orientation = np.zeros(4)  # quaternions
-        self.base_euler  # euler angles
+        self.base_euler = np.zeros(3)  # base orientation in Euler angles
         self.base_vel = np.zeros(3)
         self.base_avel = np.zeros(3)
         self.foot_normal_forces = np.zeros(4)
@@ -169,7 +169,7 @@ class AliengoQuadruped:
         temp = self.client.getBasePositionAndOrientation(self.quadruped)
         self.base_position = np.array(temp[0])
         self.base_orientation = np.array(temp[1])
-        self.base_euler = np.array(self.client.getEulerfromQuaternion(
+        self.base_euler = np.array(self.client.getEulerFromQuaternion(
             self.base_orientation))
         self.base_vel, self.base_avel = self.client.getBaseVelocity(
             self.quadruped)

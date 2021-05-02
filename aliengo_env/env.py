@@ -50,7 +50,7 @@ class AliengoEnv(gym.Env):
             self.client = bc.BulletClient(connection_mode=p.DIRECT)
         self.fake_client = bc.BulletClient(connection_mode=p.DIRECT)
 
-        path = os.path.join(os.path.dirname(__file__), '/urdf/plane.urdf')
+        path = os.path.join(os.path.dirname(__file__), 'urdf/plane.urdf')
         self.plane = self.client.loadURDF(path)
         self.quadruped = aliengo_quadruped.AliengoQuadruped(
             pybullet_client=self.client,
@@ -98,7 +98,7 @@ class AliengoEnv(gym.Env):
         self.t = 0.0
 
     def generate_disturbances(self):
-        if (np.random.rand() < self.perturb_p) and self.apply_perturb:
+        if self.apply_perturb and (np.random.rand() < self.perturb_p):
             # TODO eventually make disturbance generating function that
             #  applies disturbances for multiple timesteps
             if np.random.rand() > 0.5:
@@ -127,9 +127,8 @@ class AliengoEnv(gym.Env):
                 self.quadruped.visualize()
 
         self.eps_step_counter += 1
-        self.quadruped.update_state(flat_ground=False,  # TODO flat_ground
+        self.quadruped.update_state(flat_ground=False,  # TODO remove flat_ground arg
                                     fake_client=self.fake_client)
-
         obs = self.observe()
 
         info = {}

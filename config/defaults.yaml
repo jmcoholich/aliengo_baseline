@@ -4,6 +4,7 @@ gpu_idx: 0
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
+hidden_size: 256
 gail: False # do imitation learning with  gail
 gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
 gail_batch_size: 128
@@ -32,13 +33,14 @@ env_name: aliengo
 wandb_log_interval: 1 #TODO
 log_dir: /tmp/gym/
 # save_dir: ./trained_models/
-cuda: False
+cuda: True
 use_proper_time_limits: True
 recurrent_policy: False
 use_linear_lr_decay: True
 num_torch_threads: null # null just means don't set anything.
 
 env_params:
+  stochastic_resets: True
   obstacles: null
   render: False
   apply_perturb: False
@@ -48,7 +50,6 @@ env_params:
   max_torque: 44.4 # from URDF
   kp: 1.0
   kd: 1.0
-  gait_type: trot
   observation_parts: #TODO enumerate all possible types that I can even put here. Also add terrain heightmaps
     - joint_torques
     - joint_positions
