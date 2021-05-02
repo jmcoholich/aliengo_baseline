@@ -1,6 +1,6 @@
 # Added args
 wandb_project: default
-gpu_idx: 1
+gpu_idx: 0
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
