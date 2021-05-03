@@ -90,7 +90,8 @@ class AliengoEnv(gym.Env):
             self.obstacles = DummyObstacle()
         self.reward_func = RewardFunction(self.client,
                                           reward_parts,
-                                          self.quadruped)
+                                          self.quadruped,
+                                          self.action_lb.shape[0])
         self.termination_func = Termination(termination_conditions,
                                             self.obstacles,
                                             self.quadruped,
@@ -137,7 +138,7 @@ class AliengoEnv(gym.Env):
         # termination_dict is an empty dict if not done
         info.update(termination_dict)
 
-        rew, rew_dict = self.reward_func()
+        rew, rew_dict = self.reward_func(action)
         self.update_mean_rew_dict(rew_dict)
 
         if done:

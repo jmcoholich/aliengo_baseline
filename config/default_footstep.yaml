@@ -72,9 +72,10 @@ env_params:
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
     # forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
-    velocity_towards_footstep: [1.0, 1.5] # coefficient, max_rewarded velocity
-    footstep_reached: [3.0, 0.03] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
+    velocity_towards_footstep: [1.0, 0.5] # coefficient, max_rewarded velocity
+    footstep_reached: [5.0, 0.05] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
     joint_torques_sq: [-0.000005]
+    smoothness_sq: [0.1]
 
   footstep_params:
     step_length: 0.2

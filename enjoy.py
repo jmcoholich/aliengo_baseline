@@ -179,11 +179,11 @@ else:
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ws_ip = ['143.215.184.71',
-            '143.215.184.13',
-            '143.215.184.72',
-            '143.215.128.16',
-            '143.215.131.25',
-            '143.215.131.23']
+             '143.215.184.13',
+             '143.215.184.72',
+             '143.215.128.16',
+             '143.215.131.25',
+             '143.215.131.23']
     print('\n\nOpening Remote SSH Client...\n\n')
     ssh_client.connect(ws_ip[args.ws - 1], 22, 'jcoholich')
     print('Connected!\n\n')

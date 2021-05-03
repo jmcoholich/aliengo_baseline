@@ -91,8 +91,9 @@ env_params:
   reward_parts: #TODO
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
-    forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
+    forward_velocity: [1.0, -1.5, 1.0] #coeffient, lower bound, upper bound
     joint_torques_sq: [-0.000005]
+    smoothness_sq: [0.1]
 
   termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
     height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
