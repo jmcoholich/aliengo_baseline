@@ -49,10 +49,11 @@ class RewardFunction():
             distance_threshold)
         return k * term, term
 
-    def velocity_towards_footstep(self, k, max_rewarded_vel):
-        term = min(
+    def velocity_towards_footstep(self, k, min_, max_):
+        term = np.clip(
             self.quadruped.footstep_generator.velocity_towards_footstep(),
-            max_rewarded_vel)
+            min_,
+            max_)
         return k * term, term
 
     def existance(self, k):

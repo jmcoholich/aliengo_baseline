@@ -12,7 +12,7 @@ gail_epoch: 5
 lr: 3.0e-5
 eps: 1.0e-5 # RMSprop optimizer epsilon (default: 1e-5)
 alpha: 0.99 # RMSprop optimizer apha (default: 0.99)
-gamma: 0.99
+gamma: 0.995
 use_gae: True
 gae_lambda: 0.95
 entropy_coef: 0.00
@@ -72,8 +72,8 @@ env_params:
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
     # forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
-    velocity_towards_footstep: [1.0, 0.5] # coefficient, max_rewarded velocity
-    footstep_reached: [5.0, 0.05] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
+    velocity_towards_footstep: [0.25, -0.5, 0.5] # coefficient, min, max
+    footstep_reached: [10.0, 0.05] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
     joint_torques_sq: [-0.000005]
     smoothness_sq: [0.1]
 
@@ -90,7 +90,7 @@ env_params:
 
   termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
     height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
-    orientation_bounds: [0.5, 0.25, 0.25] # multiples of pi
-    timeout: [60] # seconds
+    orientation_bounds: [0.5, 0.5, 0.5] # multiples of pi
+    timeout: [30] # seconds
 
 
