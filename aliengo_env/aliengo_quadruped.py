@@ -24,7 +24,7 @@ class AliengoQuadruped:
         footstep_params=None,
         fixed=False,
         fixed_position=None,  # leaving these here in case of debugging
-        fixed_orientation=None
+        fixed_orientation=(0.0, 0.0, 0.0)
     ):
         self.max_torque = max_torque
         self.kp = kp
@@ -37,7 +37,6 @@ class AliengoQuadruped:
         self.shin_links = [4, 8, 12, 16]
         self.thigh_links = [3, 7, 11, 15]
         self.hip_links = [2, 6, 10, 14]
-
         self.quadruped = self.load_urdf(
             fixed=fixed,
             fixed_position=fixed_position,
@@ -560,7 +559,6 @@ class AliengoQuadruped:
     #     global_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
     #     return global_pos
 
-
     def get_foot_frame_foot_positions(self, global_pos=None):
         """Returns the position of the feet in the same frame of the
         set_foot_positions() argument. Z position is the
@@ -573,7 +571,7 @@ class AliengoQuadruped:
                 self.quadruped, self.foot_links)])
         # cartesian_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
         # global foot positions with the hip positions subtacted out
-        adjusted_pos = np.zeros((4,3))
+        adjusted_pos = np.zeros((4, 3))
         foot_frame_pos = np.zeros((4, 3))
 
         hip_joint_positions = np.zeros((4, 3))
@@ -632,12 +630,11 @@ class AliengoQuadruped:
         return commanded_global_foot_pos
 
     def set_foot_positions(self, foot_positions, return_joint_targets=False):
-        """Takes a numpy array of shape (4, 3) which represents foot
-        xyz relative to the hip joint. Uses IK to calculate joint
-        position targets and sets those targets. Does not return anything.
+        """Take a numpy array of shape (4, 3), representing relative foot xyz
+        distance to the hip joint. Uses IK to calculate joint
+        position targets and sets those targets.
         The Z-foot position represents the BOTTOM of the collision sphere
         """
-
         assert foot_positions.shape == (4, 3)
         self.foot_target_history.pop()
         self.foot_target_history.insert(0, foot_positions)
@@ -928,21 +925,23 @@ class AliengoQuadruped:
             num_contact_points += len(points)
         return num_contact_points
 
-    def load_urdf(self, fixed=False, fixed_position=[0,0,1.0], fixed_orientation=[1,0,0,0]):
+    def load_urdf(self, fixed=False, fixed_position=[0, 0, 1.0], fixed_orientation=[0, 0, 0]):
         urdfFlags = p.URDF_USE_SELF_COLLISION
-        path = str(os.path.dirname(__file__)) +  '/urdf/aliengo.urdf'
+        path = str(os.path.dirname(__file__)) + '/urdf/aliengo.urdf'
+        quats = self.client.getQuaternionFromEuler(fixed_orientation)
         if fixed:
-            quadruped= self.client.loadURDF(path,
-                                        basePosition=fixed_position,
-                                        baseOrientation=self.client.getQuaternionFromEuler(fixed_orientation),
-                                        flags = urdfFlags,
-                                        useFixedBase=True)
+            quadruped = self.client.loadURDF(
+                path,
+                basePosition=fixed_position,
+                baseOrientation=quats,
+                flags=urdfFlags,
+                useFixedBase=True)
         else:
-            quadruped= self.client.loadURDF(path,
-                                        basePosition=[0,0, 0.48],
-                                        baseOrientation=[0,0,0,1],
-                                        flags = urdfFlags,
-                                        useFixedBase=False)
+            quadruped = self.client.loadURDF(path,
+                                             basePosition=[0, 0, 0.48],
+                                             baseOrientation=[0, 0, 0, 1],
+                                             flags=urdfFlags,
+                                             useFixedBase=False)
 
         self.foot_links = [5, 9, 13, 17]
 
@@ -1194,19 +1193,19 @@ def plot_trajectory():
     sys.exit()
 
 
-def trajectory_generator_test(client, quadruped):
-    t = 0
-    counter = 1
-    # quadruped.reset_joint_positions(stochastic=False)
-    # time.sleep(2)
-    while True:
-        quadruped.set_trajectory_parameters(t, f=1.00)
-        client.stepSimulation()
-        time.sleep(1/240. * 1)
-        # if counter% 2 == 0:
-        #     calculate_tracking_error(command, client, quadruped)
-        t += 1/240.
-        counter += 1
+# def trajectory_generator_test(client, quadruped):
+#     t = 0
+#     counter = 1
+#     # quadruped.reset_joint_positions(stochastic=False)
+#     # time.sleep(2)
+#     while True:
+#         quadruped.set_trajectory_parameters(t, f=1.00)
+#         client.stepSimulation()
+#         time.sleep(1/240. * 1)
+#         # if counter% 2 == 0:
+#         #     calculate_tracking_error(command, client, quadruped)
+#         t += 1/240.
+#         counter += 1
 
 
 def axes_shift_function_test(client, quadruped):
@@ -1295,7 +1294,7 @@ def test_calf_joint_torques(client, quadruped):
         time.sleep(1.0/240)
 
 
-def main():
+def test_trajectory_generator():
     from env import AliengoEnv
     import yaml
     import time
@@ -1322,12 +1321,39 @@ def main():
         env.step(action)
 
 
+def check_foot_position_reach():
+    from env import AliengoEnv
+    import yaml
+    import time
+
+    path = os.path.join(os.path.dirname(__file__),
+                        '../config/footstep_01.yaml')
+    with open(path) as f:
+        params = yaml.full_load(f)
+    params = params['env_params']
+    params['render'] = True
+    params['fixed'] = True
+    params['fixed_position'] = [0.0, 0.0, 2.0]
+    env = AliengoEnv(**params)
+    env.reset()
+    while True:
+        time.sleep(1.0 / 240.0 * 10.0)
+        env.client.stepSimulation()
+        env.step(np.ones(12))
+        pos = env.quadruped.get_foot_frame_foot_positions()[0]
+        print('{:.3f}, {:.3f}, {:.3f}'.format(*pos))
+
 if __name__ == '__main__':
+    check_foot_position_reach()
+    # test_trajectory_generator()
+
+
+
+
 
     # import argparse
     # parser = argparse.ArgumentParser()
     # args = parser.parse_args()
-    main()
     # import sys; sys.exit()
     # # plot_trajectory()
 

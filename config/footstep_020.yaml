@@ -1,0 +1,100 @@
+# Added args
+wandb_project: default
+gpu_idx: 0
+
+# existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
+algo: ppo
+hidden_size: 256
+gail: False # do imitation learning with  gail
+gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
+gail_batch_size: 128
+gail_epoch: 5
+lr: 3.0e-5
+eps: 1.0e-5 # RMSprop optimizer epsilon (default: 1e-5)
+alpha: 0.99 # RMSprop optimizer apha (default: 0.99)
+gamma: 0.995
+use_gae: True
+gae_lambda: 0.95
+entropy_coef: 0.00
+value_loss_coef: 0.5
+max_grad_norm: 0.5
+seed: 1
+cuda_deterministic: False
+num_processes: 20
+num_steps: 600
+ppo_epoch: 10
+num_mini_batch: 32
+clip_param: 0.2
+log_interval: 100
+save_interval: 10
+eval_interval: null
+num_env_steps: 100_000_000
+env_name: aliengo
+wandb_log_interval: 1
+log_dir: /tmp/gym/
+cuda: True
+use_proper_time_limits: True
+recurrent_policy: False
+use_linear_lr_decay: False
+num_torch_threads: null # null just means don't set anything.
+
+
+env_params:
+  stochastic_resets: True
+  obstacles: null
+  render: False
+  apply_perturb: False
+  avg_time_per_perturb: 5.0 # seconds
+  action_repeat: 4
+  max_torque: 44.4 # from URDF
+  kp: 1.0
+  kd: 1.0
+  observation_parts: #TODO enumerate all possible types that I can even put here. Also add terrain heightmaps
+    - joint_torques
+    - joint_positions
+    - joint_velocities
+    - base_angular_velocity
+    - base_roll
+    - base_pitch
+    # - current_footstep_foot
+    - current_footstep_foot_one_hot
+    - next_footstep_distance
+    # - base_linear_acceleration #TODO
+
+  # possible values ['joint_positions', 'joint_velocities', 'joint_torques']
+  # eventually add pmtg and footstep_param stuff
+  # null means to use the widest bounds allowed ie no additional restriction imposed
+  action_space:
+    # joint_positions: #TODO implement the bounds and other action spaces.
+    #   lb: null
+    #   ub: null
+    foot_positions:
+      lb: [-0.5, -0.3, -0.53]
+      ub: [0.5, 0.3, -0.15]
+
+  reward_parts: #TODO
+    # reward_type: coefficient
+    # note: the reward bounds are on the measured value of the thing, not on the reward term
+    # forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
+    velocity_towards_footstep: [0.25, -0.5, 0.5] # coefficient, min, max
+    footstep_reached: [10.0, 0.05] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
+    joint_torques_sq: [-0.000005]
+    smoothness_sq: [0.1]
+
+  footstep_params:
+    step_length: 0.2
+    step_length_rand: 0.02 # range of uniform distribution to randomize step len by
+    step_width: 0.25
+    step_width_rand: 0.01
+    base_length: 0.45 # this is the distance between front and back legs nominally
+    length_offset: -0.02
+    n_cycles: 10 # how many cycles of 4 footsteps to generate in the training env
+    gait: walk
+    footstep_rand: 0.1 # range of uniform displacement to apply to every footstep
+
+  termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
+    height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
+    orientation_bounds: [0.5, 0.5, 0.5] # multiples of pi
+    timeout: [30] # seconds
+
+

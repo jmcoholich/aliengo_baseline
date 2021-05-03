@@ -24,7 +24,8 @@ class Observation():
             'next_footstep_distance': self.get_next_footstep_distance,
             'noise': self.noise,
             'constant_zero': self.zero,
-            'one_joint_only': self.one_joint_only
+            'one_joint_only': self.one_joint_only,
+            'current_footstep_foot_one_hot': self.current_foot_one_hot
         }
         self.lengths = {
             'joint_torques': 12,
@@ -39,7 +40,8 @@ class Observation():
             'next_footstep_distance': 3,
             'noise': 1,  # this is arbitrary
             'constant_zero': 1,
-            'one_joint_only': 1
+            'one_joint_only': 1,
+            'current_footstep_foot_one_hot': 4
         }
         assert all(part in self.handles.keys() for part in parts)
         # ensure env is invariant to order of obs parts listed in config file
@@ -97,3 +99,9 @@ class Observation():
 
     def one_joint_only(self):
         return self.quadruped.joint_positions[np.newaxis, 2]
+
+    def current_foot_one_hot(self):
+        foot = self.quadruped.footstep_generator.current_footstep % 4
+        one_hot = np.zeros(4)
+        one_hot[foot] = 1.0
+        return one_hot

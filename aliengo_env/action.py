@@ -13,12 +13,18 @@ class Action():
         self.quadruped = quadruped
         """The keys should be function handles that the actions and time are be passed directly to as the only arg
         So far, there are no actions which have parameters other than bounds"""
-        self.allowed = {'Iscen_PMTG': self.quadruped.iscen_pmtg,
-                        'joint_positions': self.set_joint_position_targets,
-                        'one_leg_only': self.one_leg}
-        self.action_lengths = {'Iscen_PMTG': 15,
-                               'joint_positions': 12,
-                               'one_leg_only': 1}
+        self.allowed = {
+            'Iscen_PMTG': self.quadruped.iscen_pmtg,
+            'joint_positions': self.set_joint_position_targets,
+            'one_leg_only': self.one_leg,
+            'foot_positions': self.foot_positions
+        }
+        self.action_lengths = {
+            'Iscen_PMTG': 15,
+            'joint_positions': 12,
+            'one_leg_only': 1,
+            'foot_positions': 12
+        }
         assert self.action_space in self.allowed.keys()
         self.action_function = self.allowed[self.action_space]
 
@@ -38,3 +44,13 @@ class Action():
 
     def set_joint_position_targets(self, action, time, params):
         self.quadruped.set_joint_position_targets(action)
+
+    def foot_positions(self, action, time, params):
+        """Send true foot positions to quadruped."""
+        ub = np.array(params['ub'])
+        lb = np.array(params['lb'])
+        mean = (ub + lb) / 2.0
+        range_ = (ub - lb)
+        action = action.reshape((4, 3)) * range_ / 2.0
+        action = action + mean
+        self.quadruped.set_foot_positions(action)
