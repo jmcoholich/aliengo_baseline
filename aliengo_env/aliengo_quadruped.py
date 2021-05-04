@@ -639,7 +639,8 @@ class AliengoQuadruped:
         self.foot_target_history.pop()
         self.foot_target_history.insert(0, foot_positions)
 
-        commanded_global_foot_positions = self._foot_frame_pos_to_global(foot_positions)
+        commanded_global_foot_positions = self.foot_frame_pos_to_global(
+            foot_positions)
 
         # TODO use analytic IK (probably faster and more accurate)
         # calculateInverseKinematics2 has a memory leak, so using the original
@@ -1369,7 +1370,7 @@ def check_foot_position_reach():
     import time
 
     path = os.path.join(os.path.dirname(__file__),
-                        '../config/footstep_01.yaml')
+                        '../config/default_footstep.yaml')
     with open(path) as f:
         params = yaml.full_load(f)
     params = params['env_params']
@@ -1387,8 +1388,8 @@ def check_foot_position_reach():
 
 
 if __name__ == '__main__':
-    axes_shift_function_test()
-    # check_foot_position_reach()
+    # axes_shift_function_test()
+    check_foot_position_reach()
     # test_trajectory_generator()
 
 

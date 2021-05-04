@@ -1,6 +1,6 @@
 # Added args
 wandb_project: default
-gpu_idx: 1
+gpu_idx: 2
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
@@ -18,7 +18,7 @@ gae_lambda: 0.95
 entropy_coef: 0.00
 value_loss_coef: 0.5
 max_grad_norm: 0.5
-seed: 1
+seed: 20
 cuda_deterministic: False
 num_processes: 20
 num_steps: 600
