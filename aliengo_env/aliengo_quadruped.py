@@ -552,12 +552,29 @@ class AliengoQuadruped:
         else:
             return 2 * k * k * k - 9 * k * k + 12 * k - 4
 
-
     # def get_foot_global_positions(self):
     #     """Returns an array of shape (4, 3) which gives the global positions of the bottom of the feet."""
     #     global_pos = np.array([i[0] for i in self.client.getLinkStates(self.quadruped, self.foot_links)])
     #     global_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
     #     return global_pos
+
+    def get_foot_frame_foot_velocities(self):
+        """Returns velocities of shape (4, 3)."""
+        # TODO compensate for distance to bottom of foot?? Velocities will
+        # be slightly off
+        info = self.client.getLinkStates(self.quadruped,
+                                         self.foot_links,
+                                         computeLinkVelocity=1)
+        global_vels = np.array([info[i][6] for i in range(4)])
+        _, base_o = self.client.getBasePositionAndOrientation(self.quadruped)
+        _, _, yaw = self.client.getEulerFromQuaternion(base_o)
+        # rotate the velocity vectors in the opposite direction of the yaw
+        # to get vectors in the robot frame
+        rot_mat = np.array([[np.cos(-yaw), -np.sin(-yaw), 0.0],
+                            [np.sin(-yaw), np.cos(-yaw), 0.0],
+                            [0.0, 0.0, 1.0]])
+        foot_frame_vels = (rot_mat @ np.expand_dims(global_vels, 2)).squeeze()
+        return foot_frame_vels
 
     def get_foot_frame_foot_positions(self, global_pos=None):
         """Returns the position of the feet in the same frame of the
@@ -565,69 +582,52 @@ class AliengoQuadruped:
         bottom of the foot collision spheres. Return is of shape (4, 3).
         Inverse of _foot_frame_pos_to_global().
         """
-
         if global_pos is None:
             global_pos = np.array([i[0] for i in self.client.getLinkStates(
                 self.quadruped, self.foot_links)])
-        # cartesian_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
-        # global foot positions with the hip positions subtacted out
-        adjusted_pos = np.zeros((4, 3))
-        foot_frame_pos = np.zeros((4, 3))
+            global_pos[:, 2] -= 0.0265
+        base_p, base_o = self.client.getBasePositionAndOrientation(
+            self.quadruped)
+        _, _, yaw = self.client.getEulerFromQuaternion(base_o)
 
-        hip_joint_positions = np.zeros((4, 3))
-        for i in range(4):
-            hip_offset_from_base = self.client.getJointInfo(
-                self.quadruped, self.hip_joints[i])[14]
-            base_p, base_o = self.client.getBasePositionAndOrientation(
-                self.quadruped)
-            hip_joint_positions[i], _ = np.array(
-                self.client.multiplyTransforms(positionA=base_p,
-                                               orientationA=base_o,
-                                               positionB=hip_offset_from_base,
-                                               orientationB=[0, 0, 0, 1.0]))
-            _, _, yaw = self.client.getEulerFromQuaternion(base_o)
-            adjusted_pos[i] = global_pos[i] - hip_joint_positions[i]
-            # all that's left to do is rotate the x and y positions, then compensate for collision sphere height
-            foot_frame_pos[i][0] = (adjusted_pos[i][0] * np.cos(yaw)
-                                    + adjusted_pos[i][1] * np.sin(yaw))
-            foot_frame_pos[i][1] = (adjusted_pos[i][1] * np.cos(yaw)
-                                    + adjusted_pos[i][2] * np.sin(yaw))
-            foot_frame_pos[i][2] = adjusted_pos[i][2] - 0.0265
-        return foot_frame_pos
+        # subtract off position of base
+        output = global_pos - np.array(base_p)
 
-    def _foot_frame_pos_to_global(self, foot_frame_pos):
+        # rotate output to be in robot frame
+        rot_mat = np.array([[np.cos(-yaw), -np.sin(-yaw), 0.0],
+                            [np.sin(-yaw), np.cos(-yaw), 0.0],
+                            [0.0, 0.0, 1.0]])
+        output = (rot_mat @ np.expand_dims(output, 2)).squeeze()
+
+        # subtract off the hip positions
+        # offsets are in robot frame
+        hip_offset_from_base = np.array([self.client.getJointInfo(
+            self.quadruped, self.hip_joints[i])[14] for i in range(4)])
+        output -= hip_offset_from_base
+        return output
+
+    def foot_frame_pos_to_global(self, foot_frame_pos):
         """Take foot frame positions and output global coordinates.
         Inverse of get_foot_frame_foot_positions().
         """
+        base_p, base_o = self.client.getBasePositionAndOrientation(
+            self.quadruped)
+        _, _, yaw = self.client.getEulerFromQuaternion(base_o)
 
-        # storing these for use when debug
-        hip_joint_pos = np.zeros((4, 3))
-        commanded_global_foot_pos = np.zeros((4, 3))
-        for i in range(4):
-            hip_offset_from_base = self.client.getJointInfo(self.quadruped, self.hip_joints[i])[14]
-            base_p, base_o = self.client.getBasePositionAndOrientation(self.quadruped)
-            hip_joint_pos[i], _ = np.array(
-                self.client.multiplyTransforms(positionA=base_p,
-                                               orientationA=base_o,
-                                               positionB=hip_offset_from_base,
-                                               orientationB=[0, 0, 0, 1.0]))
-            # rotate the input foot_positions x and y from robot yaw direction to global coordinate frame
-            _, _, yaw = self.client.getEulerFromQuaternion(base_o)
-            commanded_global_foot_pos[i][0] = (hip_joint_pos[i][0]
-                                               + foot_frame_pos[i][0]
-                                               * np.cos(yaw)
-                                               + foot_frame_pos[i][1]
-                                               * np.sin(yaw))
-            commanded_global_foot_pos[i][1] = (hip_joint_pos[i][1]
-                                               + foot_frame_pos[i][0]
-                                               * np.sin(yaw)
-                                               + foot_frame_pos[i][1]
-                                               * np.cos(yaw))
-            # 0.0265 is the radius of the foot collision spheres
-            commanded_global_foot_pos[i][2] = (hip_joint_pos[i][2]
-                                               + foot_frame_pos[i][2]
-                                               + 0.0265)
-        return commanded_global_foot_pos
+        # add the hip positions, which are in robot frame
+        hip_offset_from_base = np.array([self.client.getJointInfo(
+            self.quadruped, self.hip_joints[i])[14] for i in range(4)])
+        output = foot_frame_pos + hip_offset_from_base
+
+        # rotate output to be in global frame
+        rot_mat = np.array([[np.cos(yaw), -np.sin(yaw), 0.0],
+                            [np.sin(yaw), np.cos(yaw), 0.0],
+                            [0.0, 0.0, 1.0]])
+        output = (rot_mat @ np.expand_dims(output, 2)).squeeze()
+
+        # add position of base
+        output += np.array(base_p)
+        return output
 
     def set_foot_positions(self, foot_positions, return_joint_targets=False):
         """Take a numpy array of shape (4, 3), representing relative foot xyz
@@ -1186,7 +1186,7 @@ def plot_trajectory():
     z1 = h * (-2*k1*k1*k1 + 3*k1*k1) - 0.5
     k2 = np.linspace(1, 2, 100)
     z2 = h * (2*k2*k2*k2 - 9*k2*k2 + 12*k2 - 4) - 0.5
-    k3 = np.linspace(-2,0,100)
+    k3 = np.linspace(-2, 0, 100)
     z3 = np.ones(100) * -0.5
     plt.plot(k1, z1, k2, z2, k3, z3)
     plt.show()
@@ -1208,26 +1208,68 @@ def plot_trajectory():
 #         counter += 1
 
 
-def axes_shift_function_test(client, quadruped):
+def axes_shift_function_test():
     # generate a bunch of random points, shift them, shift back, calculate error
+
+    from env import AliengoEnv
+    import yaml
+
+    path = os.path.join(os.path.dirname(__file__),
+                        '../config/TEST_pmtg_env.yaml')
+    with open(path) as f:
+        params = yaml.full_load(f)
+    params['fixed'] = True
+    env = AliengoEnv(**params)
+    quadruped = env.quadruped
+    client = env.client
     n = 1000
-    test_points = (np.random.random_sample((n, 4, 3)) - 0.5) * 20 # distributed U[-10, 10)
+    # distributed U[-10, 10)
+    test_points = (np.random.random_sample((n, 4, 3)) - 0.5) * 20
     error = np.zeros(n)
-    for i in range(n): # loop bc these methods are not vectorized
-        output = quadruped._foot_frame_pos_to_global(quadruped.get_foot_frame_foot_positions(
-                                                                                            global_pos=test_points[i]))
-        error[i] = abs(output - test_points[i]).mean()
+    for i in range(n):  # loop bc these methods are not vectorized
+        output = quadruped.foot_frame_pos_to_global(
+            quadruped.get_foot_frame_foot_positions(
+                global_pos=test_points[i]
+            )
+        )
+        error[i] = abs(output - test_points[i]).max()
     print('\n' + '#' * 50)
-    print('Avg Error One way: {}'.format(error.mean()))
-
+    print('Max Error One way: {}'.format(error.max()))
 
     error = np.zeros(n)
-    for i in range(n): # loop bc these methods are not vectorized
+    for i in range(n):
         output = quadruped.get_foot_frame_foot_positions(
-                                                        global_pos=quadruped._foot_frame_pos_to_global(test_points[i]))
-        error[i] = abs(output - test_points[i]).mean()
-    print('Avg Error Other way: {}'.format(error.mean()))
+            global_pos=quadruped.foot_frame_pos_to_global(
+                test_points[i]
+            )
+        )
+        error[i] = abs(output - test_points[i]).max()
+    print('Max Error Other way: {}'.format(error.max()))
     print('#' * 50 + '\n')
+    # Now test with actual robot measurements
+    max_error = -1000
+    for i in range(10):
+        # breakpoint()
+        pos = np.random.random_sample(3) * 5
+        orn = client.getQuaternionFromEuler((
+            np.random.random_sample(3) - 0.5) * np.pi)
+        client.resetBasePositionAndOrientation(
+            quadruped.quadruped,
+            posObj=pos,
+            ornObj=orn
+        )
+        client.stepSimulation()
+        truth_global_pos = np.array([i[0] for i in client.getLinkStates(
+            quadruped.quadruped, quadruped.foot_links)])
+        truth_global_pos[:, 2] -= 0.0265
+        temp = quadruped.get_foot_frame_foot_positions(
+            global_pos=truth_global_pos)
+        output = quadruped.foot_frame_pos_to_global(temp)
+        error = abs(output - truth_global_pos).max()
+        if error > max_error:
+            max_error = error
+    print("Max error with real robot measurements: {}".format(max_error))
+
 
 
 def test_disturbances(client, quadruped):
@@ -1247,9 +1289,9 @@ def test_disturbances(client, quadruped):
     counter = 0
     flag = True
     while True:
-        if counter%100 == 0:
+        if counter % 100 == 0:
             if flag:
-                print(quadruped.apply_torso_disturbance())#wrench=[1e10]*6))
+                print(quadruped.apply_torso_disturbance())  # wrench=[1e10]*6))
                 flag = False
             else:
                 print(quadruped.apply_foot_disturbance())
@@ -1343,8 +1385,10 @@ def check_foot_position_reach():
         pos = env.quadruped.get_foot_frame_foot_positions()[0]
         print('{:.3f}, {:.3f}, {:.3f}'.format(*pos))
 
+
 if __name__ == '__main__':
-    check_foot_position_reach()
+    axes_shift_function_test()
+    # check_foot_position_reach()
     # test_trajectory_generator()
 
 

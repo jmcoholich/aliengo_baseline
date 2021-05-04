@@ -94,8 +94,11 @@ class FootstepGenerator:
         return pos
 
     def get_current_footstep_distance(self):
-        """Returns xyz distance of current quadruped foot location to next footstep location."""
-
+        """Returns xyz distance of current quadruped
+        foot location to next footstep location.
+        When this function is called by the reward class,
+        The x and y are rotated to align with robot front direction.
+        """
         pos = self.get_current_foot_global_pos()
         return self.footsteps[self.current_footstep] - pos
 

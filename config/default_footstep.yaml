@@ -1,6 +1,6 @@
 # Added args
 wandb_project: default
-gpu_idx: 1
+gpu_idx: 0
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
@@ -20,7 +20,7 @@ value_loss_coef: 0.5
 max_grad_norm: 0.5
 seed: 1
 cuda_deterministic: False
-num_processes: 20
+num_processes: 1 # TODO
 num_steps: 600
 ppo_epoch: 10
 num_mini_batch: 32
@@ -38,7 +38,6 @@ recurrent_policy: False
 use_linear_lr_decay: False
 num_torch_threads: null # null just means don't set anything.
 
-
 env_params:
   stochastic_resets: True
   obstacles: null
@@ -50,23 +49,29 @@ env_params:
   kp: 1.0
   kd: 1.0
   observation_parts: #TODO enumerate all possible types that I can even put here. Also add terrain heightmaps
-    - joint_torques
-    - joint_positions
-    - joint_velocities
+    # - joint_torques
+    # - joint_positions
+    # - joint_velocities
+    - robo_frame_foot_position
+    - robo_frame_foot_velocity
     - base_angular_velocity
     - base_roll
     - base_pitch
-    - current_footstep_foot
-    - next_footstep_distance
+    # - current_footstep_foot_one_hot
+    # - next_footstep_distance
+    - footstep_distance_one_hot
     # - base_linear_acceleration #TODO
 
   # possible values ['joint_positions', 'joint_velocities', 'joint_torques']
   # eventually add pmtg and footstep_param stuff
   # null means to use the widest bounds allowed ie no additional restriction imposed
   action_space:
-    joint_positions: #TODO implement the bounds and other action spaces.
-      lb: null
-      ub: null
+    # joint_positions: #TODO implement the bounds and other action spaces.
+    #   lb: null
+    #   ub: null
+    foot_positions:
+      lb: [-0.5, -0.3, -0.53]
+      ub: [0.5, 0.3, -0.15]
 
   reward_parts: #TODO
     # reward_type: coefficient

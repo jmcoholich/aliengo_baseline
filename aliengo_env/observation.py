@@ -20,12 +20,14 @@ class Observation():
             'base_pitch': self.get_base_pitch,
             'base_yaw': self.get_base_yaw,
             'trajectory_generator_phase': self.get_tg_phase,
-            'current_footstep_foot': self.get_current_foot,
             'next_footstep_distance': self.get_next_footstep_distance,
             'noise': self.noise,
             'constant_zero': self.zero,
             'one_joint_only': self.one_joint_only,
-            'current_footstep_foot_one_hot': self.current_foot_one_hot
+            'current_footstep_foot_one_hot': self.current_foot_one_hot,
+            'footstep_distance_one_hot': self.footstep_distance_one_hot,
+            'robo_frame_foot_position': self.foot_position,
+            'robo_frame_foot_velocity': self.foot_velocity
         }
         self.lengths = {
             'joint_torques': 12,
@@ -36,12 +38,14 @@ class Observation():
             'base_pitch': 1,
             'base_yaw': 1,
             'trajectory_generator_phase': 2,
-            'current_footstep_foot': 1,
             'next_footstep_distance': 3,
             'noise': 1,  # this is arbitrary
             'constant_zero': 1,
             'one_joint_only': 1,
-            'current_footstep_foot_one_hot': 4
+            'current_footstep_foot_one_hot': 4,
+            'footstep_distance_one_hot': 12,
+            'robo_frame_foot_position': 12,
+            'robo_frame_foot_velocity': 12
         }
         assert all(part in self.handles.keys() for part in parts)
         # ensure env is invariant to order of obs parts listed in config file
@@ -84,12 +88,26 @@ class Observation():
         return np.array([np.sin(self.quadruped.phases[0]),
                          np.cos(self.quadruped.phases[0])])
 
-    def get_current_foot(self):
-        return np.array([
-            self.quadruped.footstep_generator.current_footstep % 4])
-
     def get_next_footstep_distance(self):
-        return self.quadruped.footstep_generator.get_current_footstep_distance()
+        """The footstep_generator.get_current_footstep_distance()
+        returns the xyz vector aligned with the global coordinate system.
+        The robot does not know its own yaw, so the vector is transformed
+        to align with robot front direction.
+        """
+        yaw = self.quadruped.base_euler[2]
+        vec = self.quadruped.footstep_generator.get_current_footstep_distance()
+        # rotate by negative yaw angle to get vectors in robot frame
+        rot_mat = np.array([[np.cos(-yaw), -np.sin(-yaw), 0.0],
+                            [np.sin(-yaw), np.cos(-yaw), 0.0],
+                            [0.0, 0.0, 1.0]])
+        return (rot_mat @ np.expand_dims(vec, 1)).squeeze()
+
+    def footstep_distance_one_hot(self):
+        output = np.zeros(12)
+        foot = self.quadruped.footstep_generator.current_footstep % 4
+        vec = self.get_next_footstep_distance()
+        output[foot*3 : (foot+1)*3] = vec
+        return output
 
     def noise(self):
         return (np.random.random_sample(1) - 0.5) * 2.0
@@ -105,3 +123,9 @@ class Observation():
         one_hot = np.zeros(4)
         one_hot[foot] = 1.0
         return one_hot
+
+    def foot_position(self):
+        return self.quadruped.get_foot_frame_foot_positions().flatten()
+
+    def foot_velocity(self):
+        return self.quadruped.get_foot_frame_foot_velocities().flatten()

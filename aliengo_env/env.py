@@ -128,6 +128,7 @@ class AliengoEnv(gym.Env):
                 self.quadruped.visualize()
 
         self.eps_step_counter += 1
+        # update state must come before observe
         self.quadruped.update_state(flat_ground=False,  # TODO remove flat_ground arg
                                     fake_client=self.fake_client)
         obs = self.observe()
