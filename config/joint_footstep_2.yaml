@@ -81,7 +81,7 @@ env_params:
     footstep_reached: [5.0, 0.03] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
     joint_torques_sq: [-0.000005]
     smoothness_sq: [0.1]
-    orientation: [-0.1, -0.1, -0.02] # coefficient penalizing abs val of euler angle x, y, z
+    orientation: [1.0, -0.1, -0.1, -0.02] # coefficient penalizing abs val of euler angle x, y, z
 
   footstep_params:
     step_length: 0.1
