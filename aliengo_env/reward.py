@@ -16,7 +16,8 @@ class RewardFunction():
             'velocity_towards_footstep': self.velocity_towards_footstep,
             'footstep_reached': self.footstep_reached,
             'existance': self.existance,
-            'smoothness_sq': self.smoothness_sq
+            'smoothness_sq': self.smoothness_sq,
+            'orientation': self.orientation
         }
         assert all(part in self.all_terms.keys()
                    for part in self.reward_parts.keys())
@@ -67,4 +68,9 @@ class RewardFunction():
         else:
             term = 0.0
         self.prev_action = self.action
+        return k * term, term
+
+    def orientation(self, k, x, y, z):
+        coeffs = np.array([x, y, z])
+        term = (abs(self.quadruped.base_euler) * coeffs).sum()
         return k * term, term

@@ -249,6 +249,7 @@ while True:
     episode_rew += reward
     if done:
         print('Episode reward: {}'.format(episode_rew.item()))
+        print(info[0]['termination_reason'])
         episode_rew = 0.0
     masks.fill_(0.0 if done else 1.0)
 
