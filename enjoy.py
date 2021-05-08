@@ -249,7 +249,10 @@ while True:
     episode_rew += reward
     if done:
         print('Episode reward: {}'.format(episode_rew.item()))
-        print(info[0]['termination_reason'])
+        if 'termination_reason' in info[0].keys():
+            print(info[0]['termination_reason'])
+        else:
+            print('Timeout')
         episode_rew = 0.0
     masks.fill_(0.0 if done else 1.0)
 

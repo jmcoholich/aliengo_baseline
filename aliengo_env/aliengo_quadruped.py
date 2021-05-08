@@ -1389,8 +1389,8 @@ def check_foot_position_reach():
 
 if __name__ == '__main__':
     # axes_shift_function_test()
-    check_foot_position_reach()
-    # test_trajectory_generator()
+    # check_foot_position_reach()
+    test_trajectory_generator()
 
 
 
