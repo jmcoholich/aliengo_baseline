@@ -1346,7 +1346,7 @@ def test_trajectory_generator():
     torch.manual_seed(0)
 
     path = os.path.join(os.path.dirname(__file__),
-                        '../config/default_pmtg_improved_round2.yaml')
+                        '../config/state_pmtg.yaml')
     with open(path) as f:
         params = yaml.full_load(f)
     params = params['env_params']
@@ -1360,7 +1360,7 @@ def test_trajectory_generator():
         all in the range of [-1, 1]
         """
     amplitude = np.array([0.0])
-    walking_height = np.array([1.0])
+    walking_height = np.array([-1.0])
     frequency = np.array([1.0])
     residuals = np.zeros(12)
     action = np.concatenate((amplitude, walking_height, frequency, residuals))

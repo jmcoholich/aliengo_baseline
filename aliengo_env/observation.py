@@ -31,7 +31,7 @@ class Observation():
             'trajectory_generator_phase': (self.get_tg_phase, 2),
 
             'next_footstep_distance': (self.get_next_footstep_distance, 3),
-            'current_footstep_foot_one_hot': (self.current_foot_one_hot, 4),
+            'current_footstep_foot_one_hot': (self.get_current_foot_one_hot, 4),
             'footstep_distance_one_hot': (self.get_footstep_distance_one_hot, 12),
 
             'robo_frame_foot_position': (self.get_foot_position, 12),
@@ -82,7 +82,7 @@ class Observation():
         return obs
 
     def get_start_token(self):
-        return self.env.eps_step_counter == 0
+        return np.array([float(self.env.eps_step_counter == 0)])
 
     def get_base_velocity(self):
         return self.quadruped.base_vel
