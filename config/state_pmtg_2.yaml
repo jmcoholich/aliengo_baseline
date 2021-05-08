@@ -1,0 +1,103 @@
+# Added args
+wandb_project: PMTG
+gpu_idx: 0
+
+# existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
+algo: ppo
+hidden_size: 512
+gail: False # do imitation learning with  gail
+gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
+gail_batch_size: 128
+gail_epoch: 5
+lr: 3.0e-5
+eps: 1.0e-5 # RMSprop optimizer epsilon (default: 1e-5)
+alpha: 0.99 # RMSprop optimizer apha (default: 0.99)
+gamma: 0.99
+use_gae: True
+gae_lambda: 0.95
+entropy_coef: 0.00
+value_loss_coef: 0.5
+max_grad_norm: 0.5
+seed: 1
+cuda_deterministic: False
+num_processes: 20
+num_steps: 600
+ppo_epoch: 10
+num_mini_batch: 32
+clip_param: 0.2
+log_interval: 100
+save_interval: 10
+eval_interval: null
+num_env_steps: 100_000_000
+env_name: aliengo
+wandb_log_interval: 1
+log_dir: /tmp/gym/
+# save_dir: ./trained_models/
+cuda: True # TODO change to true for training
+use_proper_time_limits: True
+recurrent_policy: False
+use_linear_lr_decay: False
+num_torch_threads: null # null just means don't set anything.
+
+
+env_params:
+  stochastic_resets: True
+  obstacles: null
+  render: False
+  apply_perturb: False
+  avg_time_per_perturb: 5.0 # seconds
+  action_repeat: 6
+  vis: False
+  max_torque: 44.4 # from URDF
+  kp: 1.0
+  kd: 1.0
+  observation_parts: #TODO enumerate all possible types that I can even put here. Also add terrain heightmaps
+    - joint_torques
+    - joint_positions
+    - joint_velocities
+    - base_angular_velocity
+    - base_velocity
+    - base_orientation
+    - base_position
+    - trajectory_generator_phase
+    - previous_observation
+    - previous_action
+    - start_token
+    # - trajectory_generator_individual_leg_phases
+    # - base_linear_acceleration #TODO
+
+  action_space:
+    # joint_positions: #TODO implement the bounds and other action spaces.
+    #   lb: null
+    #   ub: null
+    Iscen_PMTG: # This pmtg is the original one from "Policies Modulating Trajectory Generators"
+      gait: trot # allowed: trot, walk
+      amplitude_bounds:
+        lb: 0.0
+        ub: 0.10
+      walking_height_bounds: # this is just negative step_bottom
+        lb: 0.35
+        ub: 0.55
+      frequency_bounds:
+        lb: 0.0
+        ub: 2.0
+      residual_bounds:
+        lb: -0.2
+        ub: 0.2
+      step_height: 0.05
+      x_offset: 0.02109375
+      lateral_offset: 0.075
+
+
+  reward_parts: #TODO
+    # reward_type: coefficient
+    # note: the reward bounds are on the measured value of the thing, not on the reward term
+    forward_velocity: [1.0, -0.5, 0.5] #coeffient, lower bound, upper bound
+    joint_torques_sq: [-0.000005]
+    smoothness_sq: [0.1]
+    orientation: [1.0, -0.15, -0.1, -0.02]
+
+  termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
+    height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
+    orientation_bounds: [0.5, 0.25, 0.25] # multiples of pi
+    timeout: [60] # seconds

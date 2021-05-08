@@ -70,9 +70,10 @@ class Observation():
         if ('previous_observation' in self.parts
                 and self.env.eps_step_counter != 0):
             obs = np.concatenate((obs, self.prev_obs))
+            self.prev_obs = obs[:int(len(obs)/2)]
         elif 'previous_observation' in self.parts:
             obs = np.concatenate((obs, obs))
-        self.prev_obs = obs
+            self.prev_obs = obs[:int(len(obs)/2)]
 
         if 'previous_action' in self.parts and prev_action is not None:
             obs = np.concatenate((obs, prev_action))
