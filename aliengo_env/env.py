@@ -62,12 +62,6 @@ class AliengoEnv(gym.Env):
         self.client.setRealTimeSimulation(False)
         self.client.setTimeStep(1 / 240.0)
 
-        self.observe = Observation(observation_parts, self.quadruped)
-        self.observation_space = spaces.Box(
-            low=self.observe.observation_lb,
-            high=self.observe.observation_ub,
-            dtype=np.float32)
-
         self.act = Action(action_space, self.quadruped)
         self.action_lb = self.act.action_lb
         self.action_ub = self.act.action_ub
@@ -77,6 +71,15 @@ class AliengoEnv(gym.Env):
         self.action_space = spaces.Box(
             low=self.act.action_lb,
             high=self.act.action_ub,
+            dtype=np.float32)
+
+        self.observe = Observation(observation_parts,
+                                   self.quadruped,
+                                   len(self.action_lb),
+                                   self)
+        self.observation_space = spaces.Box(
+            low=self.observe.observation_lb,
+            high=self.observe.observation_ub,
             dtype=np.float32)
 
         obstacles_dict = {'hills': Hills,
@@ -131,7 +134,7 @@ class AliengoEnv(gym.Env):
         # update state must come before observe
         self.quadruped.update_state(flat_ground=False,  # TODO remove flat_ground arg
                                     fake_client=self.fake_client)
-        obs = self.observe()
+        obs = self.observe(action)
 
         info = {}
         # this must come after quadruped._update_state()
@@ -186,9 +189,11 @@ class AliengoEnv(gym.Env):
         for _ in range(50):  # to let the robot settle on the ground.
             self.quadruped.reset_joint_positions(reset_position)
             self.client.stepSimulation()
+        for _ in range(100):
+            self.client.stepSimulation()
         self.quadruped.update_state(flat_ground=True,  # TODO get rid of flatground
                                     fake_client=self.fake_client)
-        return self.observe()
+        return self.observe(None)
 
     def render(self, mode='human', client=None):
         if client is None:

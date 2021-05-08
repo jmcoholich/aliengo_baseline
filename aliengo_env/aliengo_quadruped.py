@@ -1341,27 +1341,37 @@ def test_trajectory_generator():
     from env import AliengoEnv
     import yaml
     import time
+    import torch
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     path = os.path.join(os.path.dirname(__file__),
-                        '../config/TEST_pmtg_env.yaml')
+                        '../config/default_pmtg_improved_round2.yaml')
     with open(path) as f:
         params = yaml.full_load(f)
+    params = params['env_params']
     params['render'] = True
     params['fixed'] = False
+    params['fixed_position'] = [0.0, 0.0, 1.5]
     env = AliengoEnv(**params)
     env.reset()
     """The action should consist of amplitude, walking_height,
         frequency, plus 12 joint positions residuals,
         all in the range of [-1, 1]
         """
-    amplitude = np.array([0.1])
-    walking_height = np.array([0.45])
+    amplitude = np.array([0.0])
+    walking_height = np.array([1.0])
     frequency = np.array([1.0])
     residuals = np.zeros(12)
     action = np.concatenate((amplitude, walking_height, frequency, residuals))
+    # for _ in range(100):
+    #     env.client.stepSimulation()
+    time.sleep(1.0)
     while True:
         time.sleep(1/240. * env.action_repeat)
         env.step(action)
+        if action[0] < 1.00:
+            action[0] += 0.01
 
 
 def check_foot_position_reach():
