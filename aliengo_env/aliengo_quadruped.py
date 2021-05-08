@@ -552,12 +552,6 @@ class AliengoQuadruped:
         else:
             return 2 * k * k * k - 9 * k * k + 12 * k - 4
 
-    # def get_foot_global_positions(self):
-    #     """Returns an array of shape (4, 3) which gives the global positions of the bottom of the feet."""
-    #     global_pos = np.array([i[0] for i in self.client.getLinkStates(self.quadruped, self.foot_links)])
-    #     global_pos[:, 2] -= 0.0265 # compenstate for collision sphere radius
-    #     return global_pos
-
     def get_foot_frame_foot_velocities(self):
         """Returns velocities of shape (4, 3)."""
         # TODO compensate for distance to bottom of foot?? Velocities will
@@ -576,6 +570,14 @@ class AliengoQuadruped:
         foot_frame_vels = (rot_mat @ np.expand_dims(global_vels, 2)).squeeze()
         return foot_frame_vels
 
+    def get_global_foot_positions(self):
+        """Returns an array of shape (4, 3) which gives the global
+            positions of the bottom of the feet."""
+        global_pos = np.array([i[0] for i in self.client.getLinkStates(
+            self.quadruped, self.foot_links)])
+        global_pos[:, 2] -= 0.0265
+        return global_pos
+
     def get_foot_frame_foot_positions(self, global_pos=None):
         """Returns the position of the feet in the same frame of the
         set_foot_positions() argument. Z position is the
@@ -583,9 +585,7 @@ class AliengoQuadruped:
         Inverse of _foot_frame_pos_to_global().
         """
         if global_pos is None:
-            global_pos = np.array([i[0] for i in self.client.getLinkStates(
-                self.quadruped, self.foot_links)])
-            global_pos[:, 2] -= 0.0265
+            global_pos = self.get_global_foot_positions()
         base_p, base_o = self.client.getBasePositionAndOrientation(
             self.quadruped)
         _, _, yaw = self.client.getEulerFromQuaternion(base_o)
@@ -778,40 +778,7 @@ class AliengoQuadruped:
         else:
             return
 
-    def apply_torso_disturbance(
-            self, wrench=None, max_force_mag=5000 * 0, max_torque_mag=500 * 0):
-        """Applies a given wrench to robot torso, or defaults to a random wrench. Only lasts for one timestep.
-        Returns the wrench that was applied.
 
-        NOTE: This function doesn't work properly when p.setRealTimeSimulation(True).
-        """
-
-        if wrench is None:
-            max_force_component = (max_force_mag * max_force_mag/3.0)**0.5
-            max_torque_component = (max_torque_mag * max_torque_mag/3.0)**0.5
-            rand_force = (np.random.random_sample(3) - 0.5) * max_force_component * 2 # U[-max_force_component, +max...]
-            rand_torque = (np.random.random_sample(3) - 0.5) * max_torque_component * 2
-            wrench = np.concatenate((rand_force, rand_torque))
-        self.client.applyExternalForce(self.quadruped, -1, wrench[:3], [0, 0, 0], p.LINK_FRAME)
-        self.client.applyExternalTorque(self.quadruped, -1, wrench[3:], p.LINK_FRAME)
-        self.last_torso_disturbance = wrench
-        return wrench
-
-    def apply_foot_disturbance(self, force=None, foot=None, max_force_mag=2500 * 0):
-        '''Applies a given force to a given foot, or defaults to random force applied to random foot. Only lasts for
-        one timestep. Returns force and foot applied to.
-
-        NOTE: This function doesn't work properly when p.setRealTimeSimulation(True).
-        '''
-
-        if force is None:
-            max_force_component = (max_force_mag * max_force_mag/3.0)**0.5
-            force = (np.random.random_sample(3) - 0.5) * max_force_component * 2
-        if foot is None:
-            foot = np.random.randint(0, 4)
-        self.client.applyExternalForce(self.quadruped, self.foot_links[foot], force, (0,0,0), p.LINK_FRAME)
-        self.last_foot_disturbance = np.concatenate((force, np.array([foot])))
-        return force, foot
 
     def get_foot_contacts(self, object_=None):
         '''

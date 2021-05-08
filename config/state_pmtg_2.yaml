@@ -96,6 +96,7 @@ env_params:
     joint_torques_sq: [-0.000005]
     smoothness_sq: [0.1]
     orientation: [1.0, -0.15, -0.1, -0.02]
+    lift_feet: [0.25, 0.05]
 
   termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
     height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included

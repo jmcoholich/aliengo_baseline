@@ -17,7 +17,8 @@ class RewardFunction():
             'footstep_reached': self.footstep_reached,
             'existance': self.existance,
             'smoothness_sq': self.smoothness_sq,
-            'orientation': self.orientation
+            'orientation': self.orientation,
+            'lift_feet': self.lift_feet
         }
         assert all(part in self.all_terms.keys()
                    for part in self.reward_parts.keys())
@@ -73,4 +74,18 @@ class RewardFunction():
     def orientation(self, k, x, y, z):
         coeffs = np.array([x, y, z])
         term = (abs(self.quadruped.base_euler) * coeffs).sum()
+        return k * term, term
+
+    def lift_feet(self, k, height):
+        # if feet are in the middle 50% of the lifing half of the pmtg phase
+        # TODO add a check that we are doing iscen pmtg as action space
+        # TODO make this work not just for flatground
+        swing_feet = ((1.25 * np.pi < self.quadruped.phases)
+                      & (self.quadruped.phases < 1.75 * np.pi)).nonzero()[0]
+        if len(swing_feet) == 0:
+            term = 0.0
+        else:
+            global_pos = self.quadruped.get_global_foot_positions()
+            above = len((global_pos[swing_feet, 2] > height).nonzero()[0])
+            term = above / len(swing_feet)
         return k * term, term

@@ -17,6 +17,7 @@ from obstacles.stepping_stones import SteppingStones
 from obstacles.stairs import Stairs
 from reward import RewardFunction
 from utils import DummyObstacle
+# from disturbance_generator import DisturbanceGenerator
 
 
 class AliengoEnv(gym.Env):
@@ -36,8 +37,8 @@ class AliengoEnv(gym.Env):
             **quadruped_kwargs
     ):
         self.apply_perturb = apply_perturb
-        self.stochastic_resets = stochastic_resets
         self.avg_time_per_perturb = avg_time_per_perturb
+        self.stochastic_resets = stochastic_resets
         self.action_repeat = action_repeat
         self.perturb_p = (1.0 / (self.avg_time_per_perturb * 240.0)
                           * self.action_repeat)
@@ -101,16 +102,10 @@ class AliengoEnv(gym.Env):
                                             self)
         self.t = 0.0
 
-    def generate_disturbances(self):
-        if self.apply_perturb and (np.random.rand() < self.perturb_p):
-            # TODO eventually make disturbance generating function that
-            #  applies disturbances for multiple timesteps
-            if np.random.rand() > 0.5:
-                force, foot = self.quadruped.apply_foot_disturbance()
-                return (force, foot)
-            else:
-                wrench = self.quadruped.apply_torso_disturbance()
-                return wrench
+        if self.apply_perturb:
+            self.generate_disturbances = DisturbanceGenerator(self.quadruped)
+        else:
+            self.generate_disturbances = lambda: None
 
     def step(self, action):
         delta = 1e-4  # this should just be for floating point errors
@@ -121,9 +116,9 @@ class AliengoEnv(gym.Env):
                              + str(self.action_lb) + '\nto\n'
                              + str(self.action_ub))
 
-        self.generate_disturbances()
 
         for _ in range(self.action_repeat):
+            self.generate_disturbances()
             self.act(action, self.t)
             self.t += 1.0 / 240.0
             self.client.stepSimulation()
