@@ -6,10 +6,10 @@ class DisturbanceGenerator:
             quadruped,
             avg_seconds_between_perturb=10.0,
             prob_foot_disturbance=0.5,
-            max_impulse,
-            max_angular_impulse,
-            max_foot_inpulse,
-            max_perturb_length
+            max_impulse=40.0,  # N-s
+            max_angular_impulse=2.0,  # Nm-s
+            max_foot_inpulse=20.0,  # N-s
+            max_perturb_length=3.0  # s
     ):
         self.quadruped = quadruped
         # This object is called for every stepSimulation(), so action repeat
