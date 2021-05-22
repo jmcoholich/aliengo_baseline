@@ -1,5 +1,5 @@
 # Added args
-wandb_project: default
+wandb_project: footstep
 gpu_idx: 2
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
@@ -95,7 +95,7 @@ env_params:
 
   termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
     height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
-    orientation_bounds: [0.5, 0.5, 0.5] # multiples of pi
+    orientation_bounds: [0.25, 0.25, 0.25] # multiples of pi
     timeout: [30] # seconds
 
 
