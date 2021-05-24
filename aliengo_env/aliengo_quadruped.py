@@ -604,6 +604,7 @@ class AliengoQuadruped:
         hip_offset_from_base = np.array([self.client.getJointInfo(
             self.quadruped, self.hip_joints[i])[14] for i in range(4)])
         output -= hip_offset_from_base
+        output[:, 2] -= 0.0265
         return output
 
     def foot_frame_pos_to_global(self, foot_frame_pos):
@@ -1083,66 +1084,87 @@ class AliengoQuadruped:
     #                                     lineWidth=self.line_width)
 
 
-def sine_tracking_test(client, quadruped):
+def sine_tracking_test():
     # test foot position command tracking and print tracking error
+
+    from env import AliengoEnv
+    import yaml
+    import time
+    import torch
+    np.random.seed(0)
+    torch.manual_seed(0)
+
+    path = os.path.join(os.path.dirname(__file__),
+                        '../config/state_pmtg.yaml')
+    with open(path) as f:
+        params = yaml.full_load(f)
+    params = params['env_params']
+    params['render'] = True
+    params['fixed'] = True
+    params['fixed_position'] = [0.0, 0.0, 1.5]
+    env = AliengoEnv(**params)
+    env.reset()
     t = 0
     counter = 0
     while True:
-        command = np.array([[0.1 * np.sin(2*t), -0.1 * np.sin(2*t), -0.3  + 0.1 * np.sin(2*t)] for _ in range(4)])
-        quadruped.set_foot_positions(command)
-        orientation = client.getQuaternionFromEuler([np.pi/4.*np.sin(t)]*3)
-        client.resetBasePositionAndOrientation(quadruped.quadruped,[-1,1,1], orientation)
+        command = np.array([[0.1 * np.sin(2*t),
+                             -0.1 * np.sin(2*t),
+                             -0.3 + 0.1 * np.sin(2*t)] for _ in range(4)])
+        env.quadruped.set_foot_positions(command)
+        orientation = env.client.getQuaternionFromEuler(
+            [np.pi / 4.0 * np.sin(t)] * 3)
+        env.client.resetBasePositionAndOrientation(env.quadruped.quadruped,
+                                                   [-1, 1, 1],
+                                                   orientation)
 
-        if counter%240 == 0:
-            quadruped.apply_foot_disturbance()
-        client.stepSimulation()
+        # if counter % 240 == 0:
+        #     env.quadruped.apply_foot_disturbance()
+        env.client.stepSimulation()
         time.sleep(1/240.)
-        t += 1/240.
+        t += 1/240.0 * 0.1
         counter += 1
-        calculate_tracking_error(command, client, quadruped)
+        calculate_tracking_error(command, env.client, env.quadruped)
 
 
 
-def floor_tracking_test(client, quadruped):
+def floor_tracking_test():
     # test foot position command tracking and print tracking error
+    from env import AliengoEnv
+    import yaml
+    import time
+    import torch
+    np.random.seed(0)
+    torch.manual_seed(0)
+
+    path = os.path.join(os.path.dirname(__file__),
+                        '../config/state_pmtg.yaml')
+    with open(path) as f:
+        params = yaml.full_load(f)
+    params = params['env_params']
+    params['render'] = True
+    params['fixed'] = True
+    params['fixed_position'] = [0.0, 0.0, 1.5]
+    env = AliengoEnv(**params)
+    env.reset()
     t = 0
     while True:
-        z = -0.500 # decreasing this to -0.51 should show feet collision with ground and inability to track
+        z = -0.450  # decreasing this to -0.51 should show feet collision with ground and inability to track
         command = np.array([[0.1 * np.sin(2*t), 0, z] for _ in range(4)])
-        quadruped.set_foot_positions(command)
-        client.resetBasePositionAndOrientation(quadruped.quadruped,[0.,0.,0.5], [0.,0.,0.,1.0])
-
-        client.stepSimulation()
+        env.quadruped.set_foot_positions(command)
+        env.client.resetBasePositionAndOrientation(env.quadruped.quadruped,
+                                                   [0., 0., 0.5],
+                                                   [0., 0., 0., 1.0])
+        env.client.stepSimulation()
         time.sleep(1/240.)
         t += 1/240.
-
-        calculate_tracking_error(command, client, quadruped)
+        calculate_tracking_error(command, env.client, env.quadruped)
 
 
 def calculate_tracking_error(commanded_foot_positions, client, quadruped):
-    # calculate tracking error. First calculate the command in global coordinates
-        # hip_joint_positions = np.zeros((4, 3)) # storing these for use when debug
-        # commanded_global_foot_positions = np.zeros((4, 3))
-        # for i in range(4):
-        #     hip_offset_from_base = client.getJointInfo(quadruped.quadruped, quadruped.hip_joints[i])[14]
-        #     base_p, base_o = client.getBasePositionAndOrientation(quadruped.quadruped)
-        #     hip_joint_positions[i], _ = np.array(client.multiplyTransforms(positionA=base_p,
-        #                                             orientationA=base_o,
-        #                                             positionB=hip_offset_from_base,
-        #                                             orientationB=[0.0, 0.0, 0.0, 1.0]))
-        #     # rotate the input foot_positions x and y from robot yaw direction to global coordinate frame
-        #     _, _, yaw = client.getEulerFromQuaternion(base_o)
-        #     commanded_global_foot_positions[i][0] = hip_joint_positions[i][0] + \
-        #                                         foot_positions[i][0] * np.cos(yaw) + foot_positions[i][1] * np.sin(yaw)
-        #     commanded_global_foot_positions[i][1] = hip_joint_positions[i][1] + \
-        #                                         foot_positions[i][0] * np.sin(yaw) + foot_positions[i][1] * np.cos(yaw)
-        #     commanded_global_foot_positions[i][2] = hip_joint_positions[i][2] + foot_positions[i][2] + 0.0265
-        # actual_pos = np.array([i[0] for i in client.getLinkStates(quadruped.quadruped, quadruped.foot_links)])
-
-
-    errors = abs(commanded_foot_positions - quadruped.get_foot_frame_foot_positions())
+    errors = abs(commanded_foot_positions
+                 - quadruped.get_foot_frame_foot_positions())
     print('Maximum tracking error: {:e}'.format(errors.max()))
-    print('Mean tracking error: {:e}'.format(errors.mean()))
+    # print('Mean tracking error: {:e}'.format(errors.mean()))
     # print(commanded_global_foot_positions - actual_pos)
     print()
 
@@ -1237,7 +1259,6 @@ def axes_shift_function_test():
         if error > max_error:
             max_error = error
     print("Max error with real robot measurements: {}".format(max_error))
-
 
 
 def test_disturbances(client, quadruped):
@@ -1365,9 +1386,11 @@ def check_foot_position_reach():
 
 
 if __name__ == '__main__':
-    # axes_shift_function_test()
+    axes_shift_function_test()
     # check_foot_position_reach()
-    test_trajectory_generator()
+    # test_trajectory_generator()
+    # sine_tracking_test()
+    # floor_tracking_test()
 
 
 
@@ -1390,8 +1413,6 @@ if __name__ == '__main__':
     # quadruped = AliengoQuadruped(client, fixed=True, fixed_orientation=[0] * 3, fixed_position=[0.15,-0.15,0.7], kp=1.0,
     #                     vis=False, gait_type='trot')
 
-    # # sine_tracking_test(client, quadruped)
-    # # floor_tracking_test(client, quadruped)
     # trajectory_generator_test(client, quadruped) # tracking performance is easily increased by setting kp=1.0
     # axes_shift_function_test(client, quadruped) # error should be about 2e-17
     # test_disturbances(client, quadruped) # unfix the base to actually see results of disturbances
