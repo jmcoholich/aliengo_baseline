@@ -37,7 +37,6 @@ python enjoy.py --load-dir trained_models/ppo --env-name "gym_aliengo:AliengoSta
 '''
 
 
-
 def add_frame(render_func, img_array):
     img = render_func('rgb_array')
     height, _, _ = img.shape

@@ -1,20 +1,13 @@
-import copy
-import glob
 import os
 import time
 from collections import deque
 
-import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
 from .a2c_ppo_acktr import algo, utils
 from .a2c_ppo_acktr.algo import gail
-from .a2c_ppo_acktr.arguments import get_args
 from .a2c_ppo_acktr.envs import make_vec_envs
 from .a2c_ppo_acktr.model import Policy
 from .a2c_ppo_acktr.storage import RolloutStorage
@@ -116,7 +109,6 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
     if resume:  # load the old optimizer state dict
         agent.optimizer.load_state_dict(optimizer_state_dict)
 
-
     if args.gail:
         assert len(envs.observation_space.shape) == 1
         discr = gail.Discriminator(
@@ -169,7 +161,8 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, dist_entropy = actor_critic.act(
+                (value, action, action_log_prob,
+                 recurrent_hidden_states, dist_entropy) = actor_critic.act(
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])  # TODO return dist_entropy
 
@@ -251,14 +244,16 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'obs_rms', None),
                 agent.optimizer.state_dict(),
-                {"update_number": j} # training info
+                {"update_number": j}  # training info
             ], os.path.join(save_dir, config_yaml_file + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             print(
-                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
+                "Updates {}, num timesteps {}, FPS {} \n Last {} training"
+                " episodes: mean/median reward {:.1f}/{:.1f}, min/max "
+                "reward {:.1f}/{:.1f}\n"
                 .format(j, total_num_steps,
                         int(total_num_steps / (end - start)),
                         len(episode_rewards), np.mean(episode_rewards),
@@ -274,4 +269,5 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
 
 
 if __name__ == "__main__":
-    main()
+    raise NotImplementedError
+    # main()
