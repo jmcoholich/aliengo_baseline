@@ -135,7 +135,8 @@ class Observation():
 
     def get_footstep_distance_one_hot(self):
         output = np.zeros(12)
-        foot = self.quadruped.footstep_generator.current_footstep % 4
+        foot = self.quadruped.footstep_generator.footstep_idcs[
+            self.quadruped.footstep_generator.current_footstep % 4]
         vec = self.get_next_footstep_distance()
         output[foot*3 : (foot+1)*3] = vec
         return output
@@ -150,7 +151,8 @@ class Observation():
         return self.quadruped.joint_positions[np.newaxis, 2]
 
     def get_current_foot_one_hot(self):
-        foot = self.quadruped.footstep_generator.current_footstep % 4
+        foot = self.quadruped.footstep_generator.footstep_idcs[
+            self.quadruped.footstep_generator.current_footstep % 4]
         one_hot = np.zeros(4)
         one_hot[foot] = 1.0
         return one_hot

@@ -1318,7 +1318,7 @@ def test_trajectory_generator():
         params = yaml.full_load(f)
     params = params['env_params']
     params['render'] = True
-    params['fixed'] = False
+    params['fixed'] = True
     params['fixed_position'] = [0.0, 0.0, 1.5]
     env = AliengoEnv(**params)
     env.reset()
