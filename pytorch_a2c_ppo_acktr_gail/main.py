@@ -35,12 +35,11 @@ class WandbLogWrapper:
         self.mean_info = {}
         self.log_interval = log_interval
 
-
     def log(self, info):
         self.counter += 1
-        if not self.mean_info: # if dict is empty, init
+        if not self.mean_info:  # if dict is empty, init
             self.mean_info = info
-        else: # otherwise, update values (online mean algorithm)
+        else:  # otherwise, update values (online mean algorithm)
             for key, value in info.items():
                 if not (isinstance(value, str) or isinstance(value, bool)):
                     self.mean_info[key] += (value - self.mean_info[key])/float(self.counter)
@@ -50,7 +49,7 @@ class WandbLogWrapper:
             self.counter = 0
 
 
-def main(args, config_yaml_file, resume=False):
+def main(args, config_yaml_file, seed, gpu_idx, resume=False):
     """Takes the stem of the config yaml file name (ie file name without .yaml). """
 
     if resume:
@@ -59,8 +58,9 @@ def main(args, config_yaml_file, resume=False):
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
 
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
 
     if args.cuda and torch.cuda.is_available() and args.cuda_deterministic:
         torch.backends.cudnn.benchmark = False
@@ -73,9 +73,9 @@ def main(args, config_yaml_file, resume=False):
 
     if args.num_torch_threads:
         torch.set_num_threads(args.num_torch_threads)  # TODO is there any reason to set this to one?
-    device = torch.device("cuda:" + str(args.gpu_idx) if args.cuda else "cpu")
+    device = torch.device("cuda:" + str(gpu_idx) if args.cuda else "cpu")
 
-    envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
+    envs = make_vec_envs(args.env_name, seed, args.num_processes,
                          args.gamma, args.log_dir, device, False, env_params=args.env_params)
     if resume:
         vec_norm = get_vec_normalize(envs)
@@ -113,7 +113,7 @@ def main(args, config_yaml_file, resume=False):
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(
             actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
-    if resume: # load the old optimizer state dict
+    if resume:  # load the old optimizer state dict
         agent.optimizer.load_state_dict(optimizer_state_dict)
 
 
@@ -171,11 +171,10 @@ def main(args, config_yaml_file, resume=False):
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, dist_entropy = actor_critic.act(
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step]) #TODO return dist_entropy
+                    rollouts.masks[step])  # TODO return dist_entropy
 
             entropies_counter += 1.0
             mean_entropies += (dist_entropy.item() - mean_entropies)/entropies_counter
-
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -186,20 +185,21 @@ def main(args, config_yaml_file, resume=False):
                     wandb_info = {}
                     total_env_steps += info['episode']['l']
                     wandb_info['hours_wall_time'] = info['episode']['t']/3600.
-                    wandb_info['episode_length']  = info['episode']['l']
-                    wandb_info['episode_reward']  = info['episode']['r']
+                    wandb_info['episode_length'] = info['episode']['l']
+                    wandb_info['episode_reward'] = info['episode']['r']
                     wandb_info['num_env_samples'] = total_env_steps
-                    wandb_info['average_entropy']  = mean_entropies
+                    wandb_info['average_entropy'] = mean_entropies
                     # these keys are already taken case of elsewhere
                     # TODO eventually log a moving average of percentage/frequency of different termination conditions
-                    blacklisted_keys = {'episode', 'bad_transition', 'termination_reason'} # don't log these
+                    # don't log these
+                    blacklisted_keys = {'episode',
+                                        'bad_transition',
+                                        'termination_reason'}
                     for key_of_logged_item, value_of_logged_item in info.items():
                         if key_of_logged_item not in blacklisted_keys:
                             wandb_info[key_of_logged_item] = value_of_logged_item
                     entropies_counter = 0.0
                     wandb_wrapper.log(wandb_info)
-
-
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
@@ -269,7 +269,7 @@ def main(args, config_yaml_file, resume=False):
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
             obs_rms = utils.get_vec_normalize(envs).obs_rms
-            evaluate(actor_critic, obs_rms, args.env_name, args.seed,
+            evaluate(actor_critic, obs_rms, args.env_name, seed,
                      args.num_processes, eval_log_dir, device)
 
 

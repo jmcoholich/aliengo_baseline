@@ -13,15 +13,13 @@ def warn(text):
 
 
 def get_params(config_yaml_path):
-
-
-    with open(os.path.join('config','defaults.yaml')) as f:
+    with open(os.path.join('config', 'defaults.yaml')) as f:
         default_params = yaml.full_load(f)
 
-    with open(os.path.join('config',config_yaml_path + '.yaml')) as f:
+    with open(os.path.join('config', config_yaml_path + '.yaml')) as f:
         params = yaml.full_load(f)
 
-    default_params.update(params) # this is a dict
+    default_params.update(params)  # this is a dict
     args = argparse.Namespace()
     vars(args).update(default_params)
     if args.cuda and not torch.cuda.is_available():
@@ -55,15 +53,23 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
                         help="loads a trained_model corresponding to the yaml file and resumes training.",
                         action="store_true",
                         default=False)
+    parser.add_argument("--gpu-idx",
+                        help="Specifies GPU to train on (if CUDA is enabled)",
+                        default=0)
+    parser.add_argument("--seed",
+                        default=1)
     args = parser.parse_args()
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
     else:
         check_if_overwriting(args.config)
     main_args = get_params(args.config)
-    ppo_main(main_args, args.config, args.resume)
+    ppo_main(main_args,
+             args.config,
+             args.seed,
+             args.gpu_idx,
+             resume=args.resume)
 
 
 if __name__ == '__main__':
     main()
-
