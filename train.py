@@ -29,11 +29,11 @@ def get_params(config_yaml_path):
     return args
 
 
-def check_if_overwriting(config):
+def check_if_overwriting(config, seed):
     """Ask user if they are sure they want to overwrite trained_model."""
-    path = os.path.join('./trained_models', config + '.pt')
+    path = os.path.join('./trained_models', config + seed + '.pt')
     if os.path.exists(path):
-        warn("\nThe trained model for this config already exists "
+        warn("\nThe trained model for this config and seed already exists "
              "on this machine. Overwrite it? (y/n)")
         answer = input().lower()
         if answer == 'y':
@@ -64,7 +64,7 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
     else:
-        check_if_overwriting(args.config)
+        check_if_overwriting(args.config, seed)
     main_args = get_params(args.config)
     ppo_main(main_args,
              args.config,

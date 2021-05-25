@@ -245,7 +245,7 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
                 getattr(utils.get_vec_normalize(envs), 'obs_rms', None),
                 agent.optimizer.state_dict(),
                 {"update_number": j}  # training info
-            ], os.path.join(save_dir, config_yaml_file + ".pt"))
+            ], os.path.join(save_dir, config_yaml_file + seed + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             total_num_steps = (j + 1) * args.num_processes * args.num_steps

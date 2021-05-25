@@ -64,7 +64,7 @@ def write_video(img_array, env_name, fps, args):
     out.release()
     print('Video saved')
 
-sys.path.append('a2c_ppo_acktr') # TODO
+sys.path.append('a2c_ppo_acktr')  # TODO
 
 # load yaml #TODO use function from train.py
 
@@ -170,7 +170,7 @@ env = make_vec_envs(
 render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
-filename = os.path.join('./trained_models', args.config + '.pt')
+filename = os.path.join('./trained_models', args.config + args.seed + '.pt')
 if args.ws == -1:
     actor_critic, obs_rms, _, _ = torch.load(filename, args.device)
 else:
