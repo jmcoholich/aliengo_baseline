@@ -177,8 +177,8 @@ else:
     import paramiko
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ws_ip = ['143.215.184.71',
-             '143.215.184.13',
+    ws_ip = ['143.215.128.18',
+             '143.215.131.33',
              '143.215.184.72',
              '143.215.128.16',
              '143.215.131.25',
