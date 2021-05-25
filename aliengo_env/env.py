@@ -133,12 +133,11 @@ class AliengoEnv(gym.Env):
 
         info = {}
         # this must come after quadruped._update_state()
+        rew, rew_dict = self.reward_func(action)
+        self.update_mean_rew_dict(rew_dict)
         done, termination_dict = self.termination_func()
         # termination_dict is an empty dict if not done
         info.update(termination_dict)
-
-        rew, rew_dict = self.reward_func(action)
-        self.update_mean_rew_dict(rew_dict)
 
         if done:
             info['distance_traveled'] = self.quadruped.base_position[0]
