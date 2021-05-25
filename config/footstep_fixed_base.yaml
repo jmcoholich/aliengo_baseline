@@ -38,6 +38,8 @@ num_torch_threads: null # null just means don't set anything.
 
 env_params:
   fixed: True
+  fixed_position: [0.0, 0.0, 0.48]
+  fixed_orientation: [0.0, 0.0, 0.0]
   stochastic_resets: True
   obstacles: null
   render: False

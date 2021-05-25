@@ -55,8 +55,10 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
                         default=False)
     parser.add_argument("--gpu-idx",
                         help="Specifies GPU to train on (if CUDA is enabled)",
+                        type=int,
                         default=0)
     parser.add_argument("--seed",
+                        type=int,
                         default=1)
     args = parser.parse_args()
     if args.resume:
