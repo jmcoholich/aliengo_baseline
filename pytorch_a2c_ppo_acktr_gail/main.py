@@ -46,8 +46,10 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
     """Takes the stem of the config yaml file name (ie file name without .yaml). """
 
     if resume:
-        f = os.path.join('./trained_models', config_yaml_file + '.pt')
-        actor_critic, obs_rms, optimizer_state_dict, training_info = torch.load(f, 'cpu')
+        f = os.path.join('./trained_models',
+                         config_yaml_file + str(seed) + '.pt')
+        (actor_critic, obs_rms, optimizer_state_dict,
+         training_info) = torch.load(f, 'cpu')
     wandb.init(project=args.wandb_project, config=args)
     wandb_wrapper = WandbLogWrapper(wandb, log_interval=args.wandb_log_interval)
 
