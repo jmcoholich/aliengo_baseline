@@ -64,7 +64,7 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
     else:
-        check_if_overwriting(args.config, seed)
+        check_if_overwriting(args.config, args.seed)
     main_args = get_params(args.config)
     ppo_main(main_args,
              args.config,
