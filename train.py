@@ -31,7 +31,7 @@ def get_params(config_yaml_path):
 
 def check_if_overwriting(config, seed):
     """Ask user if they are sure they want to overwrite trained_model."""
-    path = os.path.join('./trained_models', config + seed + '.pt')
+    path = os.path.join('./trained_models', config + str(seed) + '.pt')
     if os.path.exists(path):
         warn("\nThe trained model for this config and seed already exists "
              "on this machine. Overwrite it? (y/n)")

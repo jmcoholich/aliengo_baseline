@@ -170,7 +170,7 @@ env = make_vec_envs(
 render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
-filename = os.path.join('./trained_models', args.config + args.seed + '.pt')
+filename = os.path.join('./trained_models', args.config + str(args.seed) + '.pt')
 if args.ws == -1:
     actor_critic, obs_rms, _, _ = torch.load(filename, args.device)
 else:
