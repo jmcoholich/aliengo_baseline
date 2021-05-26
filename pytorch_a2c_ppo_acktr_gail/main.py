@@ -82,7 +82,9 @@ def main(args, config_yaml_file, seed, gpu_idx, resume=False):
         actor_critic = Policy(
             envs.observation_space.shape,
             envs.action_space,
-            base_kwargs={'recurrent': args.recurrent_policy, 'hidden_size': args.hidden_size})
+            base_kwargs={'recurrent': args.recurrent_policy,
+                         'hidden_size': args.hidden_size},
+            output_tanh=args.output_tanh)
     actor_critic.to(device)
 
     if args.algo == 'a2c':

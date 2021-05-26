@@ -4,7 +4,7 @@ wandb_project: footstep
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
 hidden_size: 256
-output_tanh: False
+output_tanh: True
 gail: False # do imitation learning with  gail
 gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
 gail_batch_size: 128

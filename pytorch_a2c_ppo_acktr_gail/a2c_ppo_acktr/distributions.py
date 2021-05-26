@@ -1,8 +1,6 @@
-import math
-
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from .utils import AddBias, init
 
@@ -15,6 +13,8 @@ Modify standard PyTorch distributions so they are compatible with this code.
 #
 
 # Categorical
+
+
 class FixedCategorical(torch.distributions.Categorical):
     def sample(self):
         return super().sample().unsqueeze(-1)
@@ -74,18 +74,23 @@ class Categorical(nn.Module):
 
 
 class DiagGaussian(nn.Module):
-    def __init__(self, num_inputs, num_outputs):
+    def __init__(self, num_inputs, action_space, output_tanh):
         super(DiagGaussian, self).__init__()
-
+        self.output_tanh = output_tanh
+        num_outputs = action_space.shape[0]
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
 
         self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
         self.logstd = AddBias(torch.zeros(num_outputs))
+        self.tanh = nn.Tanh()
+        assert (action_space.high == np.ones(num_outputs)).all()
+        assert (action_space.low == -np.ones(num_outputs)).all()
 
     def forward(self, x):
         action_mean = self.fc_mean(x)
-
+        if self.output_tanh:
+            action_mean = self.tanh(action_mean)
         #  An ugly hack for my KFAC implementation.
         zeros = torch.zeros(action_mean.size())
         if x.is_cuda:

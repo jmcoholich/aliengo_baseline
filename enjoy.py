@@ -238,7 +238,6 @@ while True:
     with torch.no_grad():
         value, action, _, recurrent_hidden_states, _ = actor_critic.act(
             obs, recurrent_hidden_states, masks, deterministic=args.deterministic)
-
     # Obser reward and next obs
     if 'Box' in str(env.action_space):
         obs, reward, done, info = env.step(action)
