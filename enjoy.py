@@ -245,8 +245,7 @@ while True:
 
     else:
         obs, reward, done, info = env.step(action)
-    print(obs)
-    print()
+
     episode_rew += reward
     if done:
         print('Episode reward: {}'.format(episode_rew.item()))

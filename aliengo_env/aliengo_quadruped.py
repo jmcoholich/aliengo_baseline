@@ -604,7 +604,6 @@ class AliengoQuadruped:
         hip_offset_from_base = np.array([self.client.getJointInfo(
             self.quadruped, self.hip_joints[i])[14] for i in range(4)])
         output -= hip_offset_from_base
-        output[:, 2] -= 0.0265
         return output
 
     def foot_frame_pos_to_global(self, foot_frame_pos):
@@ -642,24 +641,26 @@ class AliengoQuadruped:
 
         commanded_global_foot_positions = self.foot_frame_pos_to_global(
             foot_positions)
+        foot_center_positions = commanded_global_foot_positions.copy()
+        foot_center_positions[:, 2] += 0.0265
 
         # TODO use analytic IK (probably faster and more accurate)
         # calculateInverseKinematics2 has a memory leak, so using the original
-        joint_positions = np.zeros(12)
-        for i in range(4):
-            temp = self.client.calculateInverseKinematics(
-                self.quadruped,
-                self.foot_links[i],
-                targetPosition=commanded_global_foot_positions[i],
-                # maxNumIterations=1000,
-                # residualThreshold=1e-10))
-            )
-            joint_positions[i*3 : (i + 1)*3] = np.array(temp)[i*3 : (i + 1)*3]
-        # TODO go back to old way, since Erwin fixed it
+        # joint_positions = np.zeros(12)
+        # for i in range(4):
+        #     temp = self.client.calculateInverseKinematics(
+        #         self.quadruped,
+        #         self.foot_links[i],
+        #         targetPosition=commanded_global_foot_positions[i],
+        #         # maxNumIterations=1000,
+        #         # residualThreshold=1e-10))
+        #     )
+        #     joint_positions[i*3 : (i + 1)*3] = np.array(temp)[i*3 : (i + 1)*3]
         # old way
-        # joint_positions = np.array(self.client.calculateInverseKinematics2(self.quadruped,
-        #                                             self.foot_links,
-        #                                             targetPositions=commanded_global_foot_positions))
+        joint_positions = np.array(self.client.calculateInverseKinematics2(
+            self.quadruped,
+            self.foot_links,
+            targetPositions=foot_center_positions))
         if return_joint_targets:
             return joint_positions
         self.set_joint_position_targets(joint_positions, true_positions=True)
@@ -1149,11 +1150,11 @@ def floor_tracking_test():
     env.reset()
     t = 0
     while True:
-        z = -0.450  # decreasing this to -0.51 should show feet collision with ground and inability to track
+        z = -0.480  # decreasing this to -0.51 should show feet collision with ground and inability to track
         command = np.array([[0.1 * np.sin(2*t), 0, z] for _ in range(4)])
         env.quadruped.set_foot_positions(command)
         env.client.resetBasePositionAndOrientation(env.quadruped.quadruped,
-                                                   [0., 0., 0.5],
+                                                   [0., 0., 0.48],
                                                    [0., 0., 0., 1.0])
         env.client.stepSimulation()
         time.sleep(1/240.)
@@ -1387,10 +1388,10 @@ def check_foot_position_reach():
 
 
 if __name__ == '__main__':
-    axes_shift_function_test()
+    # axes_shift_function_test()
     # check_foot_position_reach()
     # test_trajectory_generator()
-    # sine_tracking_test()
+    sine_tracking_test()
     # floor_tracking_test()
 
 

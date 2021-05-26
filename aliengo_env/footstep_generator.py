@@ -130,7 +130,8 @@ class FootstepGenerator:
         else:
             reached = 0.0
 
-        if reached and self.vis:
+        if (reached and self.vis and self.current_footstep
+                != len(self.footsteps)):
             self.client.resetBasePositionAndOrientation(
                 self.curr_step_body,
                 self.footsteps[self.current_footstep],
