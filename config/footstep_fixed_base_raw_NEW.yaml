@@ -54,7 +54,7 @@ env_params:
     # - joint_positions
     # - joint_velocities
     - robo_frame_foot_position
-    - robo_frame_foot_velocity
+    # - robo_frame_foot_velocity
     # - base_angular_velocity
     # - base_roll
     # - base_pitch
