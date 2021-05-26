@@ -15,6 +15,7 @@ class FootstepGenerator:
         self.footstep_idcs = None
         self.vis = vis
         self.client = self.quadruped.client
+        self.n_foosteps_hit = None
         if self.vis:
             self.curr_step_body = None
             self.step_body_ids = []
@@ -149,6 +150,7 @@ class FootstepGenerator:
             if self.curr_step_body is not None:
                 self.client.removeBody(self.curr_step_body)
                 self.client.removeAllUserDebugItems()
+        self.n_foosteps_hit = self.current_footstep
         self.current_footstep = 0
         self.generate_footsteps(self.params)
 

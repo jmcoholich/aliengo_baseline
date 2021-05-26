@@ -142,6 +142,8 @@ class AliengoEnv(gym.Env):
         if done:
             info['distance_traveled'] = self.quadruped.base_position[0]
             info.update(self.mean_rew_dict)
+            if hasattr(self.quadruped, 'footstep_generator'):
+                info['num_footsteps_hit'] = self.quadruped.n_foosteps_hit
 
         return obs, rew, done, info
 
