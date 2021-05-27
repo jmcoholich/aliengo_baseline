@@ -1,0 +1,24 @@
+program: ars_main.py
+method: grid
+parameters:
+  lr:
+    values: [0.015, 0.0015, 0.00015]
+  n-dirs:
+    values: [1, 10, 100]
+  delta-std:
+    values: [0.025, 0.01, 0.0075]
+  top-dirs-frac:
+    values: [0.0, 0.25, 0.5, 0.75, 1.0]
+  seed:
+    values: [54, 15]
+
+  eval-int:
+    value: 10
+  eval-runs:
+    value: 20
+  env-name:
+    value: LunarLanderContinuous-v2
+  n-samples:
+    value: 10_000_000
+  wandb-project:
+    value: ARS_Lunar_Lander

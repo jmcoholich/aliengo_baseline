@@ -18,9 +18,9 @@ from utils import update_policy, run_episode, eval_policy
 
 def ars(args):
     start_time = time.time()
-    wandb.init(project="ARS_Lunar_Lander")  # , config=args)
+    wandb.init(project=args.wandb_project, config=args)
     # env = gym.make("Pendulum-v0")
-    env = gym.make("LunarLanderContinuous-v2")
+    env = gym.make(args.env_name)
     env.seed(args.seed)
     np.random.seed(args.seed)
     assert isinstance(env.action_space, gym.spaces.box.Box)
@@ -66,6 +66,10 @@ def ars(args):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--env-name", type=str,
+                        default="LunarLanderContinuous-v2")
+    parser.add_argument("--wandb-project", type=str,
+                        default="ARS_Lunar_Lander")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--lr", type=float, default=0.0002)
     parser.add_argument("--n-dirs", type=int, default=1)
