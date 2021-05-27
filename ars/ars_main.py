@@ -5,63 +5,24 @@ https://arxiv.org/pdf/1803.07055.pdf
 
 This is for continuous control space only
 """
+import argparse
 import copy
+import time
 
 import numpy as np
 import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
-# define hyperparms here for now
-
-LR = 0.0002
-N_DIRS = 32
-EXPLORATION_STD = 0.02
-N_TOP_DIRS = 4
-N_SAMPLES = 2e7
-EVAL_INT = 10
-EVAL_RUNS = 10
+import wandb
+from utils import update_policy, run_episode, eval_policy
 
 
-def eval_policy(env, policy, old_mean_std):
-    rews = np.zeros(EVAL_RUNS)
-    for i in range(EVAL_RUNS):
-        rews[i], _ = run_episode(env, old_mean_std, policy)
-
-    print('Avg rew is {}'.format(rews.mean()))
-
-
-def update_policy(policy, deltas, rewards):
-    sort_idcs = np.argsort(rewards.max(axis=1), axis=0)[::-1]
-    deltas = deltas[sort_idcs]
-    rewards = rewards[sort_idcs]
-
-    rew_diff = rewards[:N_TOP_DIRS, 1] - rewards[:N_TOP_DIRS, 0]
-    update = (np.expand_dims(rew_diff, (1, 2))
-              * deltas[:N_TOP_DIRS]).mean(axis=0)
-
-    norm_lr = LR/rewards[:N_TOP_DIRS].std()
-    policy += norm_lr * update
-    return policy
-
-
-def run_episode(env, old_mean_std, policy, mean_std=None):
-    obs = env.reset()
-    done = False
-    total_rew = 0
-    samples = 0
-    while not done:
-        norm_obs = (obs - old_mean_std.mean) / np.sqrt(old_mean_std.var)
-        action = policy @ np.expand_dims(norm_obs, 1)
-        obs, rew, done, _ = env.step(action.flatten())
-        if mean_std is not None:
-            mean_std.update(np.expand_dims(obs, 0))
-        total_rew += rew
-        samples += 1
-    return total_rew, samples
-
-
-def main():
-    env = gym.make("Pendulum-v0")
-    # env = gym.make("LunarLanderContinuous-v2")
+def ars(args):
+    start_time = time.time()
+    wandb.init(project="ARS_Lunar_Lander")  # , config=args)
+    # env = gym.make("Pendulum-v0")
+    env = gym.make("LunarLanderContinuous-v2")
+    env.seed(args.seed)
+    np.random.seed(args.seed)
     assert isinstance(env.action_space, gym.spaces.box.Box)
     assert len(env.observation_space.shape) == 1
 
@@ -72,28 +33,55 @@ def main():
 
     total_samples = 0
     i = 0
-    while total_samples < N_SAMPLES:
+    rew = eval_policy(env, policy, mean_std, args.eval_runs)
+    wandb.log({"reward": rew,
+               "samples": total_samples,
+               "time (min)": (time.time() - start_time)/60})
+    while total_samples < args.n_samples:
         old_mean_std = copy.deepcopy(mean_std)
-        deltas = np.zeros((N_DIRS, *policy.shape))
-        rewards = np.zeros((N_DIRS, 2))
-        for j in range(N_DIRS):
+        deltas = np.zeros((args.n_dirs, *policy.shape))
+        rewards = np.zeros((args.n_dirs, 2))
+        for j in range(args.n_dirs):
             # generate and evaluate perturbations
             deltas[j] = np.random.normal(size=policy.shape)
             rewards[j, 0], samples = run_episode(
                 env,
                 old_mean_std,
-                policy - deltas[j] * EXPLORATION_STD,
+                policy - deltas[j] * args.delta_std,
                 mean_std=mean_std)
             total_samples += samples
             rewards[j, 1], samples = run_episode(
                 env,
-                old_mean_std, policy + deltas[j] * EXPLORATION_STD,
+                old_mean_std, policy + deltas[j] * args.delta_std,
                 mean_std=mean_std)
             total_samples += samples
-        policy = update_policy(policy, deltas, rewards)
+        policy = update_policy(policy, deltas, rewards, args.lr, args.top_dirs)
         i += 1
-        if i % EVAL_INT == 0:
-            eval_policy(env, policy, old_mean_std)
+        if i % args.eval_int == 0:
+            rew = eval_policy(env, policy, old_mean_std, args.eval_runs)
+            wandb.log({"reward": rew,
+                       "samples": total_samples,
+                       "time (min)": (time.time() - start_time)/60})
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--lr", type=float, default=0.0002)
+    parser.add_argument("--n-dirs", type=int, default=1)
+    parser.add_argument("--delta-std", type=float, default=0.02)
+    parser.add_argument("--top-dirs", type=int, default=None)
+    parser.add_argument("--top-dirs-frac", type=float, default=1.00)
+    parser.add_argument("--n-samples", type=float, default=2e7)
+    parser.add_argument("--eval-int", type=int, default=1)
+    parser.add_argument("--eval-runs", type=int, default=10)
+
+    args = parser.parse_args()
+    if args.top_dirs and args.top_dirs_frac:
+        raise ValueError("Cannot pass both top_dirs and top_dirs_frac")
+    if args.top_dirs is None:
+        args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1
+    ars(args)
 
 
 if __name__ == "__main__":
