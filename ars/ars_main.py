@@ -12,24 +12,25 @@ import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 # define hyperparms here for now
 
-LR = 0.01
-N_DIRS = 1
-EXPLORATION_STD = 0.01
-N_TOP_DIRS = 1
-N_ITERS = 100000
-EVAL_INT = 1
-EVAL_RUNS = 4
+LR = 0.0002
+N_DIRS = 32
+EXPLORATION_STD = 0.02
+N_TOP_DIRS = 4
+N_SAMPLES = 2e7
+EVAL_INT = 10
+EVAL_RUNS = 10
 
 
-def eval_policy(env, policy, mean_std):
+def eval_policy(env, policy, old_mean_std):
     rews = np.zeros(EVAL_RUNS)
     for i in range(EVAL_RUNS):
-        rews[i] = run_episode(env, mean_std, policy)
+        rews[i], _ = run_episode(env, old_mean_std, policy)
 
     print('Avg rew is {}'.format(rews.mean()))
 
+
 def update_policy(policy, deltas, rewards):
-    sort_idcs = np.argsort(rewards.max(axis=1), axis=0)
+    sort_idcs = np.argsort(rewards.max(axis=1), axis=0)[::-1]
     deltas = deltas[sort_idcs]
     rewards = rewards[sort_idcs]
 
@@ -41,49 +42,58 @@ def update_policy(policy, deltas, rewards):
     policy += norm_lr * update
     return policy
 
+
 def run_episode(env, old_mean_std, policy, mean_std=None):
     obs = env.reset()
     done = False
     total_rew = 0
+    samples = 0
     while not done:
-        action = policy @ (obs - old_mean_std.mean) / np.sqrt(old_mean_std.var)
-        obs, rew, done, _ = env.step(action)
+        norm_obs = (obs - old_mean_std.mean) / np.sqrt(old_mean_std.var)
+        action = policy @ np.expand_dims(norm_obs, 1)
+        obs, rew, done, _ = env.step(action.flatten())
         if mean_std is not None:
-            mean_std.update(np.expand_dims(obs, 0))  # TODO make sure this is updating in main() scope
+            mean_std.update(np.expand_dims(obs, 0))
         total_rew += rew
-    return total_rew
+        samples += 1
+    return total_rew, samples
 
 
 def main():
     env = gym.make("Pendulum-v0")
+    # env = gym.make("LunarLanderContinuous-v2")
     assert isinstance(env.action_space, gym.spaces.box.Box)
     assert len(env.observation_space.shape) == 1
 
     obs_size = env.observation_space.shape[0]
     act_size = env.action_space.shape[0]
     policy = np.zeros((act_size, obs_size))
-    mean_std = RunningMeanStd()  # set epsilon to zero?
+    mean_std = RunningMeanStd(shape=obs_size)  # set epsilon to zero?
 
-    for i in range(N_ITERS):
+    total_samples = 0
+    i = 0
+    while total_samples < N_SAMPLES:
         old_mean_std = copy.deepcopy(mean_std)
         deltas = np.zeros((N_DIRS, *policy.shape))
         rewards = np.zeros((N_DIRS, 2))
         for j in range(N_DIRS):
             # generate and evaluate perturbations
-            deltas[j] = np.random.random_sample(policy.shape) * EXPLORATION_STD
-            rewards[j, 0] = run_episode(
+            deltas[j] = np.random.normal(size=policy.shape)
+            rewards[j, 0], samples = run_episode(
                 env,
                 old_mean_std,
-                policy - deltas[j],
+                policy - deltas[j] * EXPLORATION_STD,
                 mean_std=mean_std)
-            rewards[j, 1] = run_episode(
+            total_samples += samples
+            rewards[j, 1], samples = run_episode(
                 env,
-                old_mean_std, policy + deltas[j],
+                old_mean_std, policy + deltas[j] * EXPLORATION_STD,
                 mean_std=mean_std)
-
+            total_samples += samples
         policy = update_policy(policy, deltas, rewards)
+        i += 1
         if i % EVAL_INT == 0:
-            eval_policy(env, policy, copy.deepcopy(mean_std))
+            eval_policy(env, policy, old_mean_std)
 
 
 if __name__ == "__main__":
