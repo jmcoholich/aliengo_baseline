@@ -12,10 +12,10 @@ import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 # define hyperparms here for now
 
-LR = 3e-4
-N_DIRS = 10
-STD = 1.0
-N_TOP_DIRS = 8
+LR = 0.02
+N_DIRS = 8
+EXPLORATION_STD = 0.01
+N_TOP_DIRS = 4
 N_ITERS = 100
 EVAL_INT = 1
 EVAL_RUNS = 4
@@ -70,7 +70,7 @@ def main():
         rewards = np.zeros((N_DIRS, 2))
         for j in range(N_DIRS):
             # generate and evaluate perturbations
-            deltas[j] = np.random.random_sample(policy.shape)
+            deltas[j] = np.random.random_sample(policy.shape) * EXPLORATION_STD
             rewards[j, 0] = run_episode(
                 env,
                 old_mean_std,
