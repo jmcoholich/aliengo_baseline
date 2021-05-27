@@ -54,3 +54,24 @@ class Action():
         action = action.reshape((4, 3)) * range_ / 2.0
         action = action + mean
         self.quadruped.set_foot_positions(action)
+
+    # def act_to_foot_pos(self, action):
+    #     """Send true foot positions to quadruped."""
+    #     lb = np.array([-0.5, -0.3, -0.53])
+    #     ub = np.array([0.5, 0.3, -0.15])
+    #     mean = (ub + lb) / 2.0
+    #     range_ = (ub - lb)
+    #     action = action.reshape((4, 3)) * range_ / 2.0
+    #     action = action + mean
+    #     return action.flatten()
+
+    # def foot_pos_to_act(self, positions):
+    #     """Converts positions to actions.
+    #     This is just for utility/debugging."""
+    #     lb = np.array([-0.5, -0.3, -0.53])
+    #     ub = np.array([0.5, 0.3, -0.15])
+    #     mean = (ub + lb) / 2.0
+    #     range_ = (ub - lb)
+    #     action = positions.reshape((4, 3)) - mean
+    #     action = action * 2.0/range_
+    #     return action.flatten()

@@ -116,7 +116,6 @@ class AliengoEnv(gym.Env):
                              + str(self.action_lb) + '\nto\n'
                              + str(self.action_ub))
 
-
         for _ in range(self.action_repeat):
             self.generate_disturbances()
             self.act(action, self.t)
@@ -132,6 +131,7 @@ class AliengoEnv(gym.Env):
         obs = self.observe(action)
 
         info = {}
+        # info['true_obs'] = obs.copy()
         # this must come after quadruped._update_state()
         rew, rew_dict = self.reward_func(action)
         self.update_mean_rew_dict(rew_dict)

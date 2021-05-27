@@ -37,6 +37,21 @@ python enjoy.py --load-dir trained_models/ppo --env-name "gym_aliengo:AliengoSta
 '''
 
 
+# def test_function(env):
+#     max_error = -1000
+#     for _ in range(1000):
+#         original = np.random.random_sample(12) * 10
+#         temp = original.copy()
+#         temp = env.act.foot_pos_to_act(temp)
+#         temp = env.act.act_to_foot_pos(temp)
+#         error = abs(original - temp).max()
+#         if error > max_error:
+#             max_error = error
+#     breakpoint()
+
+
+
+
 def add_frame(render_func, img_array):
     img = render_func('rgb_array')
     height, _, _ = img.shape
@@ -233,11 +248,21 @@ else:
     loop_time = 0.01
 
 episode_rew = 0.0
+# new_eps = True
 while True:
     time.sleep(loop_time)
     with torch.no_grad():
         value, action, _, recurrent_hidden_states, _ = actor_critic.act(
             obs, recurrent_hidden_states, masks, deterministic=args.deterministic)
+    # print(action)
+    # test_function(env.venv.venv.envs[0].env)
+    # breakpoint()
+    # if not new_eps:
+    #     adjust = torch.tensor([0, 0, 0.01]).repeat(4)
+    #     action = torch.from_numpy(info[0]['true_obs'][:12] + info[0]['true_obs'][12:]).unsqueeze(0) + adjust
+    #     action = env.venv.venv.envs[0].env.act.foot_pos_to_act(action).unsqueeze(0)
+    # else:
+    #     new_eps = False
     # Obser reward and next obs
     if 'Box' in str(env.action_space):
         obs, reward, done, info = env.step(action)
@@ -247,6 +272,7 @@ while True:
 
     episode_rew += reward
     if done:
+        # new_eps=True
         print('Episode reward: {}'.format(episode_rew.item()))
         if 'termination_reason' in info[0].keys():
             print(info[0]['termination_reason'])
@@ -275,3 +301,4 @@ while True:
 
 if args.save_vid:
     write_video(img_array, yaml_args.env_name, FPS, args)
+
