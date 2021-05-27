@@ -12,11 +12,11 @@ import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 # define hyperparms here for now
 
-LR = 0.02
-N_DIRS = 8
+LR = 0.01
+N_DIRS = 1
 EXPLORATION_STD = 0.01
-N_TOP_DIRS = 4
-N_ITERS = 100
+N_TOP_DIRS = 1
+N_ITERS = 100000
 EVAL_INT = 1
 EVAL_RUNS = 4
 
