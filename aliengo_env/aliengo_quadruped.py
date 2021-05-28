@@ -646,21 +646,21 @@ class AliengoQuadruped:
 
         # TODO use analytic IK (probably faster and more accurate)
         # calculateInverseKinematics2 has a memory leak, so using the original
-        # joint_positions = np.zeros(12)
-        # for i in range(4):
-        #     temp = self.client.calculateInverseKinematics(
-        #         self.quadruped,
-        #         self.foot_links[i],
-        #         targetPosition=commanded_global_foot_positions[i],
-        #         # maxNumIterations=1000,
-        #         # residualThreshold=1e-10))
-        #     )
-        #     joint_positions[i*3 : (i + 1)*3] = np.array(temp)[i*3 : (i + 1)*3]
+        joint_positions = np.zeros(12)
+        for i in range(4):
+            temp = self.client.calculateInverseKinematics(
+                self.quadruped,
+                self.foot_links[i],
+                targetPosition=commanded_global_foot_positions[i],
+                # maxNumIterations=1000,
+                # residualThreshold=1e-10))
+            )
+            joint_positions[i*3 : (i + 1)*3] = np.array(temp)[i*3 : (i + 1)*3]
         # old way
-        joint_positions = np.array(self.client.calculateInverseKinematics2(
-            self.quadruped,
-            self.foot_links,
-            targetPositions=foot_center_positions))
+        # joint_positions = np.array(self.client.calculateInverseKinematics2(
+        #     self.quadruped,
+        #     self.foot_links,
+        #     targetPositions=foot_center_positions))
         if return_joint_targets:
             return joint_positions
         self.set_joint_position_targets(joint_positions, true_positions=True)
