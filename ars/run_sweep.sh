@@ -1,6 +1,31 @@
 #!/bin/bash
 
-python ars_main.py &
-python ars_main.py
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+wandb agent jcoholich/aliengo_baseline-ars/nwv4lclx &
+
 
 wait
