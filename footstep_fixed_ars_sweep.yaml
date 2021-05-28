@@ -12,4 +12,5 @@ parameters:
   seed:
     values: [54, 15]
 
-  config: footstep_fixed_base_ars
+  config:
+    value: footstep_fixed_base_ars
