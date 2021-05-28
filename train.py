@@ -6,6 +6,7 @@ import torch
 import yaml
 
 from pytorch_a2c_ppo_acktr_gail.main import main as ppo_main
+from ars.ars_main import ars as ars_main
 
 
 def warn(text):
@@ -60,17 +61,45 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
     parser.add_argument("--seed",
                         type=int,
                         default=1)
+    # Added for sweep #########################################################
+    # TODO
+    parser.add_argument("--lr", type=float, default=0.0002)
+    parser.add_argument("--n-dirs", type=int, default=1)
+    parser.add_argument("--delta-std", type=float, default=0.02)
+    parser.add_argument("--top-dirs-frac", type=float, default=1.00)
+
+    ###########################################################################
+
     args = parser.parse_args()
+
+    args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1  # TODO
+
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
     else:
         check_if_overwriting(args.config, args.seed)
     main_args = get_params(args.config)
-    ppo_main(main_args,
-             args.config,
-             args.seed,
-             args.gpu_idx,
-             resume=args.resume)
+
+    # Added for sweep #########################################################
+    # TODO
+    main_args.lr = args.lr
+    main_args.n_dirs = args.n_dirs
+    main_args.delta_std = args.delta_std
+    main_args.top_dirs = args.top_dirs
+    ###########################################################################
+
+    if main_args.algo == 'ppo':
+        ppo_main(main_args,
+                 args.config,
+                 args.seed,
+                 args.gpu_idx,
+                 resume=args.resume)
+    elif main_args.algo == 'ars':
+        ars_main(main_args,
+                 args.config,
+                 args.seed)
+    else:
+        raise ValueError("Algo name invalid.")
 
 
 if __name__ == '__main__':

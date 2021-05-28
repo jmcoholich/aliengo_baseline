@@ -8,21 +8,28 @@ This is for continuous control space only
 import argparse
 import copy
 import time
+import os
 
 import numpy as np
 import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 import wandb
-from utils import update_policy, run_episode, eval_policy
+from ars_utils import update_policy, run_episode, eval_policy
+from aliengo_env.env import AliengoEnv
+from gym.wrappers.clip_action import ClipAction
 
 
-def ars(args):
+def ars(args, config_yaml_file, seed):
     start_time = time.time()
     wandb.init(project=args.wandb_project, config=args)
     # env = gym.make("Pendulum-v0")
-    env = gym.make(args.env_name)
-    env.seed(args.seed)
-    np.random.seed(args.seed)
+    if args.env_name == "aliengo":
+        env = AliengoEnv(**args.env_params)
+        env = ClipAction(env)
+    else:
+        env = gym.make(args.env_name)
+        env.seed(seed)
+    np.random.seed(seed)
     assert isinstance(env.action_space, gym.spaces.box.Box)
     assert len(env.observation_space.shape) == 1
 
@@ -33,10 +40,9 @@ def ars(args):
 
     total_samples = 0
     i = 0
-    rew = eval_policy(env, policy, mean_std, args.eval_runs)
-    wandb.log({"reward": rew,
-               "samples": total_samples,
-               "time (min)": (time.time() - start_time)/60})
+    eval_policy(env, policy, mean_std, args.eval_runs, total_samples,
+                start_time)
+
     while total_samples < args.n_samples:
         old_mean_std = copy.deepcopy(mean_std)
         deltas = np.zeros((args.n_dirs, *policy.shape))
@@ -58,10 +64,13 @@ def ars(args):
         policy = update_policy(policy, deltas, rewards, args.lr, args.top_dirs)
         i += 1
         if i % args.eval_int == 0:
-            rew = eval_policy(env, policy, old_mean_std, args.eval_runs)
-            wandb.log({"reward": rew,
-                       "samples": total_samples,
-                       "time (min)": (time.time() - start_time)/60})
+            eval_policy(env, policy, old_mean_std, args.eval_runs,
+                        total_samples, start_time)
+        if i % args.save_int == 0:
+            path = os.path.join("./trained_models",
+                                config_yaml_file + str(seed))
+            np.savez(path, policy, old_mean_std.mean, old_mean_std.var)
+    np.savez(path, policy, old_mean_std.mean, old_mean_std.var)
 
 
 def main():
@@ -85,7 +94,7 @@ def main():
         raise ValueError("Cannot pass both top_dirs and top_dirs_frac")
     if args.top_dirs is None:
         args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1
-    ars(args)
+    ars(args, None, args.seed)
 
 
 if __name__ == "__main__":

@@ -1,13 +1,23 @@
+import time
+
 import numpy as np
+import wandb
 
 
-def eval_policy(env, policy, old_mean_std, runs):
+def eval_policy(env, policy, old_mean_std, runs, total_samples, start_time):
     rews = np.zeros(runs)
+    lengths = np.zeros(runs)
     for i in range(runs):
-        rews[i], _ = run_episode(env, old_mean_std, policy)
+        rews[i], lengths[i] = run_episode(env, old_mean_std, policy)
     avg_rew = rews.mean()
+    avg_len = lengths.mean()
     # print('Avg rew is {}'.format(avg_rew))
-    return float(avg_rew)  # convert from np.float64 to just float for wandb
+
+    wandb.log({"mean_reward": float(avg_rew),
+               "num_env_samples": total_samples,
+               "hours_wall_time": (time.time() - start_time)/3600,
+               "mean_episode_length": float(avg_len)})
+    return None
 
 
 def update_policy(policy, deltas, rewards, lr, top_dirs):
@@ -19,7 +29,7 @@ def update_policy(policy, deltas, rewards, lr, top_dirs):
     update = (np.expand_dims(rew_diff, (1, 2))
               * deltas[:top_dirs]).mean(axis=0)
 
-    norm_lr = lr/rewards[:top_dirs].std()
+    norm_lr = lr/(rewards[:top_dirs].std() + 1e-5)
     policy += norm_lr * update
     return policy
 

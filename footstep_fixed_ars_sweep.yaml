@@ -1,0 +1,15 @@
+program: train.py
+method: grid
+parameters:
+  lr:
+    values: [0.015, 0.0015, 0.00015]
+  n-dirs:
+    values: [1, 10, 100]
+  delta-std:
+    values: [0.025, 0.01, 0.0075]
+  top-dirs-frac:
+    values: [0.0, 0.25, 0.5, 0.75, 1.0]
+  seed:
+    values: [54, 15]
+
+  config: footstep_fixed_base_ars
