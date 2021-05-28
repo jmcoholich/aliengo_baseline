@@ -1,30 +1,20 @@
 #!/bin/bash
 
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
-wandb agent jcoholich/aliengo_baseline-ars/y6bfeqti &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
+wandb agent jcoholich/aliengo_baseline-ars/ig3in1v1 &
 
 wait
