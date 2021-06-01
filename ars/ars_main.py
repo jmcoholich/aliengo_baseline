@@ -42,14 +42,12 @@ def ars(args, config_yaml_file, seed):
     i = 0
     eval_policy(env, policy, mean_std, args.eval_runs, total_samples,
                 start_time)
-
+    save_path = os.path.join("./trained_models", config_yaml_file + str(seed))
     while total_samples < args.n_samples:
         old_mean_std = copy.deepcopy(mean_std)
-        deltas = np.zeros((args.n_dirs, *policy.shape))
+        deltas = np.random.normal(size=(args.n_dirs, *policy.shape))
         rewards = np.zeros((args.n_dirs, 2))
         for j in range(args.n_dirs):
-            # generate and evaluate perturbations
-            deltas[j] = np.random.normal(size=policy.shape)
             rewards[j, 0], samples, _ = run_episode(
                 env,
                 old_mean_std,
@@ -67,10 +65,8 @@ def ars(args, config_yaml_file, seed):
             eval_policy(env, policy, old_mean_std, args.eval_runs,
                         total_samples, start_time)
         if i % args.save_int == 0:
-            path = os.path.join("./trained_models",
-                                config_yaml_file + str(seed))
-            np.savez(path, policy, old_mean_std.mean, old_mean_std.var)
-    np.savez(path, policy, old_mean_std.mean, old_mean_std.var)
+            np.savez(save_path, policy, old_mean_std.mean, old_mean_std.var)
+    np.savez(save_path, policy, old_mean_std.mean, old_mean_std.var)
 
 
 def main():

@@ -1,3 +1,4 @@
+wandb_project: ARS_Lunar_Lander
 algo: ars
 lr: 0.0015
 n_dirs: 1
@@ -5,7 +6,9 @@ top_dirs: 2
 delta_std: 0.025
 top_dirs_frac: null
 eval_int: 10
-eval_runs: 20
+eval_runs: 1
 env_name: LunarLanderContinuous-v2
 n_samples: 10_000_000
-wandb_project: aliengo_baseline-ars
+save_int: 1000000
+
+threads: 10
