@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 import numpy as np
@@ -59,6 +60,7 @@ else:
 
 obs = env.reset()
 while True:
+    time.sleep(1/240. * env.action_repeat * 1.0/args.speed)
     norm_obs = (obs - mean_std.mean) / np.sqrt(mean_std.var)
     action = policy @ np.expand_dims(norm_obs, 1)
     obs, rew, done, _ = env.step(action.flatten())
