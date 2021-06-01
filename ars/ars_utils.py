@@ -8,15 +8,18 @@ def eval_policy(env, policy, old_mean_std, runs, total_samples, start_time):
     rews = np.zeros(runs)
     lengths = np.zeros(runs)
     for i in range(runs):
-        rews[i], lengths[i] = run_episode(env, old_mean_std, policy)
+        rews[i], lengths[i], info = run_episode(env, old_mean_std, policy)
     avg_rew = rews.mean()
     avg_len = lengths.mean()
     # print('Avg rew is {}'.format(avg_rew))
 
-    wandb.log({"mean_reward": float(avg_rew),
-               "num_env_samples": total_samples,
-               "hours_wall_time": (time.time() - start_time)/3600,
-               "mean_episode_length": float(avg_len)})
+    # log stuff
+    info.pop('TimeLimit.truncated', None)
+    info.update({"mean_reward": float(avg_rew),
+                 "num_env_samples": total_samples,
+                 "hours_wall_time": (time.time() - start_time)/3600,
+                 "mean_episode_length": float(avg_len)})
+    wandb.log(info)
     return None
 
 
@@ -42,9 +45,9 @@ def run_episode(env, old_mean_std, policy, mean_std=None):
     while not done:
         norm_obs = (obs - old_mean_std.mean) / np.sqrt(old_mean_std.var)
         action = policy @ np.expand_dims(norm_obs, 1)
-        obs, rew, done, _ = env.step(action.flatten())
+        obs, rew, done, info = env.step(action.flatten())
         if mean_std is not None:
             mean_std.update(np.expand_dims(obs, 0))
         total_rew += rew
         samples += 1
-    return total_rew, samples
+    return total_rew, samples, info

@@ -50,13 +50,13 @@ def ars(args, config_yaml_file, seed):
         for j in range(args.n_dirs):
             # generate and evaluate perturbations
             deltas[j] = np.random.normal(size=policy.shape)
-            rewards[j, 0], samples = run_episode(
+            rewards[j, 0], samples, _ = run_episode(
                 env,
                 old_mean_std,
                 policy - deltas[j] * args.delta_std,
                 mean_std=mean_std)
             total_samples += samples
-            rewards[j, 1], samples = run_episode(
+            rewards[j, 1], samples, _ = run_episode(
                 env,
                 old_mean_std, policy + deltas[j] * args.delta_std,
                 mean_std=mean_std)
