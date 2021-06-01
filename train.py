@@ -72,7 +72,7 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
 
     args = parser.parse_args()
 
-    args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1  # TODO
+    args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1  # TODO ADDED for sweep
 
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
