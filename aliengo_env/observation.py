@@ -32,7 +32,8 @@ class Observation():
 
             'next_footstep_distance': (self.get_next_footstep_distance, 3),
             'current_footstep_foot_one_hot': (self.get_current_foot_one_hot, 4),
-            'footstep_distance_one_hot': (self.get_footstep_distance_one_hot, 12),
+            'footstep_distance_one_hot': (self.get_footstep_distance_one_hot,
+                                          12),
 
             'robo_frame_foot_position': (self.get_foot_position, 12),
             'robo_frame_foot_velocity': (self.get_foot_velocity, 12),
@@ -43,7 +44,9 @@ class Observation():
 
             'start_token': (self.get_start_token, 1),
             'previous_observation': (None, None),
-            'previous_action': (None, None)
+            'previous_action': (None, None),
+
+            'foot_contact_states': (self.get_foot_contact_state, 4)
         }
         assert all(part in self.handles.keys() for part in parts)
         # ensure env is invariant to order of obs parts listed in config file
@@ -162,3 +165,6 @@ class Observation():
 
     def get_foot_velocity(self):
         return self.quadruped.get_foot_frame_foot_velocities().flatten()
+
+    def get_foot_contact_state(self):
+        return self.quadruped.get_foot_contact_states()

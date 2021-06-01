@@ -780,8 +780,6 @@ class AliengoQuadruped:
         else:
             return
 
-
-
     def get_foot_contacts(self, object_=None):
         '''
         Returns a numpy array of shape (4,) containing the normal forces on each foot with the object given. If
@@ -797,12 +795,12 @@ class AliengoQuadruped:
                 info = self.client.getContactPoints(bodyA=self.quadruped,
                                                     bodyB=object_,
                                                     linkIndexA=self.foot_links[i])
-            if len(info) == 0: # leg does not contact ground
+            if len(info) == 0:  # leg does not contact ground
                 contacts[i] = 0
-            elif len(info) == 1: # leg has one contact with ground
-                contacts[i] = info[0][9] # contact normal force
-            else: # use the contact point with the max normal force when there is more than one contact on a leg
-                #TODO investigate scenarios with more than one contact point and maybe do something better (mean
+            elif len(info) == 1:  # leg has one contact with ground
+                contacts[i] = info[0][9]  # contact normal force
+            else:  # use the contact point with the max normal force when there is more than one contact on a leg
+                # TODO investigate scenarios with more than one contact point and maybe do something better (mean
                 # or norm of contact forces?)
                 normals = [info[i][9] for i in range(len(info))]
                 contacts[i] = max(normals)
@@ -810,7 +808,19 @@ class AliengoQuadruped:
                 # print('Normal Forces: ', normals,'\n')
         contacts = np.array(contacts)
         if (contacts > 10_000).any():
-            warnings.warn("Foot contact force of %.2f over 10,000 (maximum of observation space)" %max(contacts))
+            warnings.warn("Foot contact force of %.2f over 10,000 (maximum of observation space)" % max(contacts))
+        return contacts
+
+    def get_foot_contact_states(self):
+        """Return size 4 vector with 1 if the corresponding foot is in contact,
+        zero otherwise.
+        """
+        contacts = np.zeros(4)
+        for i in range(4):
+            info = self.client.getContactPoints(bodyA=self.quadruped,
+                                                linkIndexA=self.foot_links[i])
+            if len(info) != 0:
+                contacts[i] = 1.0
         return contacts
 
     def _get_heightmap(self, client, ray_start_height, base_position, heightmap_params, vis=False, vis_client=None):

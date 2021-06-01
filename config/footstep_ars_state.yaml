@@ -4,8 +4,8 @@ wandb_project: footstep
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ars
 lr: 0.0015
-n_dirs: 100
-top_dirs: 100
+n_dirs: 10
+top_dirs: 8
 delta_std: 0.025
 top_dirs_frac: null
 eval_int: 10
@@ -13,7 +13,6 @@ eval_runs: 1
 save_int: 100
 env_name: aliengo
 n_samples: 100_000_000
-
 
 
 env_params:
@@ -41,9 +40,12 @@ env_params:
     - base_velocity
     # - base_roll
     # - base_pitch
-    # - current_footstep_foot_one_hot
+    - current_footstep_foot_one_hot
     # - next_footstep_distance
     - footstep_distance_one_hot
+    - previous_action
+    - previous_observation
+    - foot_contact_states
     # - base_linear_acceleration #TODO
 
   # possible values ['joint_positions', 'joint_velocities', 'joint_torques']
@@ -61,10 +63,11 @@ env_params:
     # reward_type: coefficient
     # note: the reward bounds are on the measured value of the thing, not on the reward term
     # forward_velocity: [1.0, -1.5, 1.5] #coeffient, lower bound, upper bound
-    # velocity_towards_footstep: [0.25, -0.5, 0.5] # coefficient, min, max
+    velocity_towards_footstep: [0.25, -0.5, 0.5] # coefficient, min, max
     footstep_reached: [10.0, 0.03] # [coeff, distance_treshhold (m)] this must be included to increment footsteps
-    # joint_torques_sq: [-0.000005]
-    # smoothness_sq: [0.1]
+    joint_torques_sq: [-0.000005]
+    smoothness_sq: [0.1]
+    orientation: [-1.0, 0.1, 0.1, 0.02]
 
   footstep_params:
     step_length: 0.05

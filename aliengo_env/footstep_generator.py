@@ -121,10 +121,17 @@ class FootstepGenerator:
     def footstep_reached(self, distance_threshold):
         """Return 1 if the footstep has been reached
         (and increments current footstep), else 0.
-        This method is called by the reward class.
+        This method is called by the reward class and must be called to
+        progress to the next footstep.
         """
         dist = np.linalg.norm(self.get_current_footstep_distance())
-        if dist <= distance_threshold:
+        # first check if current foot is in contact
+        foot = self.footstep_idcs[self.current_footstep % 4]
+        info = self.client.getContactPoints(
+            bodyA=self.quadruped.quadruped,
+            linkIndexA=self.quadruped.foot_links[foot])
+        in_contact = len(info) != 0
+        if (dist <= distance_threshold) and in_contact:
             reached = 1.0
             self.current_footstep += 1
         else:
