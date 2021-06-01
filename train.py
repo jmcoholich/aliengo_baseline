@@ -63,16 +63,16 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
                         default=1)
     # Added for sweep #########################################################
     # TODO
-    parser.add_argument("--lr", type=float, default=0.0002)
-    parser.add_argument("--n-dirs", type=int, default=1)
-    parser.add_argument("--delta-std", type=float, default=0.02)
-    parser.add_argument("--top-dirs-frac", type=float, default=1.00)
+    # parser.add_argument("--lr", type=float, default=0.0002)
+    # parser.add_argument("--n-dirs", type=int, default=1)
+    # parser.add_argument("--delta-std", type=float, default=0.02)
+    # parser.add_argument("--top-dirs-frac", type=float, default=1.00)
 
     ###########################################################################
 
     args = parser.parse_args()
 
-    args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1  # TODO ADDED for sweep
+    # args.top_dirs = int(args.top_dirs_frac * args.n_dirs) + 1  # ADDED for sweep
 
     if args.resume:
         warn("Resuming training. Run can no longer be determininistically reproduced.")
@@ -81,11 +81,10 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
     main_args = get_params(args.config)
 
     # Added for sweep #########################################################
-    # TODO
-    main_args.lr = args.lr
-    main_args.n_dirs = args.n_dirs
-    main_args.delta_std = args.delta_std
-    main_args.top_dirs = args.top_dirs
+    # main_args.lr = args.lr
+    # main_args.n_dirs = args.n_dirs
+    # main_args.delta_std = args.delta_std
+    # main_args.top_dirs = args.top_dirs
     ###########################################################################
 
     if main_args.algo == 'ppo':
