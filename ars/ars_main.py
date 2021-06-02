@@ -6,29 +6,25 @@ https://arxiv.org/pdf/1803.07055.pdf
 This is for continuous control space only
 """
 import argparse
-import copy
 import time
 import os
+import multiprocessing
 
 import numpy as np
 import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 import wandb
-from ars_utils import update_policy, run_episode, eval_policy
-from aliengo_env.env import AliengoEnv
-from gym.wrappers.clip_action import ClipAction
+from ars_utils import update_policy, eval_policy, create_env, parallel_runs, update_mean_std
 
 
 def ars(args, config_yaml_file, seed):
+    pool_size = multiprocessing.cpu_count() - 2
+    pool = multiprocessing.Pool(processes=pool_size)
     start_time = time.time()
     wandb.init(project=args.wandb_project, config=args)
-    # env = gym.make("Pendulum-v0")
-    if args.env_name == "aliengo":
-        env = AliengoEnv(**args.env_params)
-        env = ClipAction(env)
-    else:
-        env = gym.make(args.env_name)
-        env.seed(seed)
+
+    env = create_env(args.env_name, args.env_params, seed)
+
     np.random.seed(seed)
     assert isinstance(env.action_space, gym.spaces.box.Box)
     assert len(env.observation_space.shape) == 1
@@ -39,34 +35,34 @@ def ars(args, config_yaml_file, seed):
     mean_std = RunningMeanStd(shape=obs_size)  # set epsilon to zero?
 
     total_samples = 0
-    i = 0
+    update_num = 0
     eval_policy(env, policy, mean_std, args.eval_runs, total_samples,
                 start_time)
     save_path = os.path.join("./trained_models", config_yaml_file + str(seed))
+
     while total_samples < args.n_samples:
-        old_mean_std = copy.deepcopy(mean_std)
         deltas = np.random.normal(size=(args.n_dirs, *policy.shape))
         rewards = np.zeros((args.n_dirs, 2))
-        for j in range(args.n_dirs):
-            rewards[j, 0], samples, _ = run_episode(
-                env,
-                old_mean_std,
-                policy - deltas[j] * args.delta_std,
-                mean_std=mean_std)
-            total_samples += samples
-            rewards[j, 1], samples, _ = run_episode(
-                env,
-                old_mean_std, policy + deltas[j] * args.delta_std,
-                mean_std=mean_std)
-            total_samples += samples
+
+        pool_output = parallel_runs(policy, args.n_dirs, deltas, env, mean_std,
+                                    pool)
+
+        for j in range(len(pool_output)):
+            rewards[j // 2, j % 2] = pool_output[j][0]
+            total_samples += pool_output[j][1]
         policy = update_policy(policy, deltas, rewards, args.lr, args.top_dirs)
-        i += 1
-        if i % args.eval_int == 0:
-            eval_policy(env, policy, old_mean_std, args.eval_runs,
+
+        update_num += 1
+        if update_num % args.eval_int == 0:
+            eval_policy(env, policy, mean_std, args.eval_runs,
                         total_samples, start_time)
-        if i % args.save_int == 0:
-            np.savez(save_path, policy, old_mean_std.mean, old_mean_std.var)
-    np.savez(save_path, policy, old_mean_std.mean, old_mean_std.var)
+        if update_num % args.save_int == 0 or total_samples >= args.n_samples:
+            np.savez(save_path, policy, mean_std.mean, mean_std.var)
+
+        update_mean_std(pool_output, mean_std)
+
+    pool.close()
+    pool.join()
 
 
 def main():
