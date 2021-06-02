@@ -45,11 +45,11 @@ def ars(args, config_yaml_file, seed):
         rewards = np.zeros((args.n_dirs, 2))
 
         pool_output = parallel_runs(policy, args.n_dirs, deltas, env, mean_std,
-                                    pool)
-
+                                    pool, args.delta_std)
         for j in range(len(pool_output)):
             rewards[j // 2, j % 2] = pool_output[j][0]
             total_samples += pool_output[j][1]
+
         policy = update_policy(policy, deltas, rewards, args.lr, args.top_dirs)
 
         update_num += 1

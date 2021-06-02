@@ -16,10 +16,10 @@ def update_mean_std(pool_output, mean_std):
                                      pool_output[j][1])
 
 
-def parallel_runs(policy, n_dirs, deltas, env, mean_std, pool):
+def parallel_runs(policy, n_dirs, deltas, env, mean_std, pool, delta_std):
     pool_policies = np.tile(policy, (n_dirs * 2, 1, 1))
-    pool_policies[::2] -= deltas
-    pool_policies[1::2] += deltas
+    pool_policies[::2] -= deltas * delta_std
+    pool_policies[1::2] += deltas * delta_std
     pool_inputs = [(env, mean_std, pool_policies[k])
                    for k in range(n_dirs * 2)]
     return pool.starmap(run_episode, pool_inputs)
@@ -68,7 +68,7 @@ def update_policy(policy, deltas, rewards, lr, top_dirs):
     return policy
 
 
-def run_episode(env, old_mean_std, policy):
+def run_episode(env, mean_std, policy):
     # keep running mean and std of the episode, then return the running mean std and the count
     obs = env.reset()
     eps_mean_std = RunningMeanStd(shape=obs.shape)
@@ -76,7 +76,7 @@ def run_episode(env, old_mean_std, policy):
     total_rew = 0
     samples = 0
     while not done:
-        norm_obs = (obs - old_mean_std.mean) / np.sqrt(old_mean_std.var)
+        norm_obs = (obs - mean_std.mean) / np.sqrt(mean_std.var)
         action = policy @ np.expand_dims(norm_obs, 1)
         obs, rew, done, info = env.step(action.flatten())
         eps_mean_std.update(np.expand_dims(obs, 0))
