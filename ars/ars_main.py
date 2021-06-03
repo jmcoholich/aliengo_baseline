@@ -37,7 +37,7 @@ def ars(args, config_yaml_file, seed):
         initargs=(args.env_name, args.env_params, seed))
 
     policy = np.zeros((act_size, obs_size))
-    mean_std = RunningMeanStd(shape=obs_size, epsilon=0.0)
+    mean_std = RunningMeanStd(shape=obs_size)
 
     total_samples = 0
     update_num = 0

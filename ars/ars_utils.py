@@ -81,7 +81,7 @@ def run_episode(mean, var, policy):
     obs = env.reset()
     # print("initial obs: {}".format(obs[-1]))
     # time.sleep(100)
-    eps_mean_std = RunningMeanStd(shape=obs.shape, epsilon=0.0)
+    eps_mean_std = RunningMeanStd(shape=obs.shape)
     done = False
     total_rew = 0
     samples = 0
