@@ -1,10 +1,10 @@
 # Added args
-wandb_project: footstep
+wandb_project: footstep_ars_sweep
 
 algo: ars
 lr: 0.0015
-n_dirs: 1
-top_dirs: 1
+n_dirs: 10
+top_dirs: 8
 delta_std: 0.025
 top_dirs_frac: null
 eval_int: 10
