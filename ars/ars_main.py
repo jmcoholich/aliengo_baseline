@@ -8,43 +8,48 @@ This is for continuous control space only
 import argparse
 import time
 import os
-import multiprocessing
+import multiprocessing as mp
 
 import numpy as np
 import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 import wandb
-from ars_utils import update_policy, eval_policy, create_env, parallel_runs, update_mean_std
+from ars_utils import (update_policy, eval_policy, create_env, parallel_runs,
+                       update_mean_std, mp_create_env)
 
 
 def ars(args, config_yaml_file, seed):
-    pool_size = multiprocessing.cpu_count() - 2
-    pool = multiprocessing.Pool(processes=pool_size)
     start_time = time.time()
     wandb.init(project=args.wandb_project, config=args)
+    np.random.seed(seed)
 
     env = create_env(args.env_name, args.env_params, seed)
-
-    np.random.seed(seed)
     assert isinstance(env.action_space, gym.spaces.box.Box)
     assert len(env.observation_space.shape) == 1
-
     obs_size = env.observation_space.shape[0]
     act_size = env.action_space.shape[0]
+    del env
+
+    pool_size = min(mp.cpu_count() - 2, args.eval_runs, args.n_dirs)
+    pool = mp.Pool(
+        processes=pool_size,
+        initializer=mp_create_env,
+        initargs=(args.env_name, args.env_params, seed))
+
     policy = np.zeros((act_size, obs_size))
-    mean_std = RunningMeanStd(shape=obs_size)  # set epsilon to zero?
+    mean_std = RunningMeanStd(shape=obs_size, epsilon=0.0)
 
     total_samples = 0
     update_num = 0
-    eval_policy(env, policy, mean_std, args.eval_runs, total_samples,
+    eval_policy(pool, policy, mean_std, args.eval_runs, total_samples,
                 start_time)
     save_path = os.path.join("./trained_models", config_yaml_file + str(seed))
+    rewards = np.zeros((args.n_dirs, 2))
 
     while total_samples < args.n_samples:
         deltas = np.random.normal(size=(args.n_dirs, *policy.shape))
-        rewards = np.zeros((args.n_dirs, 2))
 
-        pool_output = parallel_runs(policy, args.n_dirs, deltas, env, mean_std,
+        pool_output = parallel_runs(policy, args.n_dirs, deltas, mean_std,
                                     pool, args.delta_std)
         for j in range(len(pool_output)):
             rewards[j // 2, j % 2] = pool_output[j][0]
@@ -54,8 +59,8 @@ def ars(args, config_yaml_file, seed):
 
         update_num += 1
         if update_num % args.eval_int == 0:
-            eval_policy(env, policy, mean_std, args.eval_runs,
-                        total_samples, start_time)
+            eval_policy(pool, policy, mean_std, args.eval_runs, total_samples,
+                        start_time)
         if update_num % args.save_int == 0 or total_samples >= args.n_samples:
             np.savez(save_path, policy, mean_std.mean, mean_std.var)
 

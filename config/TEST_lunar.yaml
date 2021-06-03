@@ -1,7 +1,7 @@
 wandb_project: ARS_Lunar_Lander
 algo: ars
 lr: 0.0015
-n_dirs: 1
+n_dirs: 2
 top_dirs: 1
 delta_std: 0.025
 top_dirs_frac: null
