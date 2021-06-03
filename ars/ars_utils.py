@@ -49,11 +49,15 @@ def eval_policy(pool, policy, mean_std, runs, total_samples, start_time):
     avg_len = 0
     mean_info = pool_output[0][2]
     mean_info.pop('TimeLimit.truncated', None)
+    mean_info.pop('termination_reason', None)
     for i in range(len(pool_output)):
         avg_rew += (pool_output[i][0] - avg_rew) / (i + 1)
         avg_len += (pool_output[i][1] - avg_len) / (i + 1)
         for key in list(mean_info):
-            mean_info[key] += (pool_output[i][2][key] - mean_info[key]) / (i+1)
+            try:
+                mean_info[key] += (pool_output[i][2][key] - mean_info[key]) / (i+1)
+            except TypeError:
+                print('Not logging {}'.format(key))
 
     mean_info.update({"mean_reward": float(avg_rew),
                       "num_env_samples": total_samples,
