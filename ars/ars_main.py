@@ -18,7 +18,7 @@ from ars_utils import (update_policy, eval_policy, create_env, parallel_runs,
                        update_mean_std, mp_create_env)
 
 
-def ars(args, config_yaml_file, seed):
+def ars(args, config_yaml_file, seed, max_processes):
     start_time = time.time()
     wandb.init(project=args.wandb_project, config=args)
     np.random.seed(seed)
@@ -29,8 +29,10 @@ def ars(args, config_yaml_file, seed):
     obs_size = env.observation_space.shape[0]
     act_size = env.action_space.shape[0]
     del env
-
-    pool_size = min(mp.cpu_count() - 2, max(args.eval_runs, args.n_dirs))
+    breakpoint()
+    if max_processes is None:
+        max_processes = mp.cpu_count() - 2
+    pool_size = min(max_processes, max(args.eval_runs, args.n_dirs))
     pool = mp.Pool(
         processes=pool_size,
         initializer=mp_create_env,

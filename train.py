@@ -61,6 +61,9 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
     parser.add_argument("--seed",
                         type=int,
                         default=1)
+    parser.add_argument("--ars-max-processes",
+                        type=int,
+                        default=None)
     # Added for sweep #########################################################
     # TODO
     # parser.add_argument("--lr", type=float, default=0.0002)
@@ -96,7 +99,8 @@ def main():  # TODO add a vis flag for training. (just to make sure the env is c
     elif main_args.algo == 'ars':
         ars_main(main_args,
                  args.config,
-                 args.seed)
+                 args.seed,
+                 args.ars_max_processes)
     else:
         raise ValueError("Algo name invalid.")
 
