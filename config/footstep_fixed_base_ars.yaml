@@ -1,7 +1,6 @@
 # Added args
 wandb_project: footstep
 
-# existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ars
 lr: 0.0015
 n_dirs: 1

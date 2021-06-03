@@ -3,74 +3,71 @@ Implements Augmented Random Search as described in this paper:
 
 https://arxiv.org/pdf/1803.07055.pdf
 
-This is for continuous control space only
+This is for continuous control space only.
 """
 import argparse
-import copy
 import time
 import os
+import multiprocessing as mp
 
 import numpy as np
 import gym
 from stable_baselines3.common.running_mean_std import RunningMeanStd
 import wandb
-from ars_utils import update_policy, run_episode, eval_policy
-from aliengo_env.env import AliengoEnv
-from gym.wrappers.clip_action import ClipAction
+from ars_utils import (update_policy, eval_policy, create_env, parallel_runs,
+                       update_mean_std, mp_create_env)
 
 
 def ars(args, config_yaml_file, seed):
     start_time = time.time()
     wandb.init(project=args.wandb_project, config=args)
-    # env = gym.make("Pendulum-v0")
-    if args.env_name == "aliengo":
-        env = AliengoEnv(**args.env_params)
-        env = ClipAction(env)
-    else:
-        env = gym.make(args.env_name)
-        env.seed(seed)
     np.random.seed(seed)
+
+    env = create_env(args.env_name, args.env_params, seed)
     assert isinstance(env.action_space, gym.spaces.box.Box)
     assert len(env.observation_space.shape) == 1
-
     obs_size = env.observation_space.shape[0]
     act_size = env.action_space.shape[0]
+    del env
+
+    pool_size = min(mp.cpu_count() - 2, max(args.eval_runs, args.n_dirs))
+    pool = mp.Pool(
+        processes=pool_size,
+        initializer=mp_create_env,
+        initargs=(args.env_name, args.env_params, seed))
+
     policy = np.zeros((act_size, obs_size))
-    mean_std = RunningMeanStd(shape=obs_size)  # set epsilon to zero?
+    mean_std = RunningMeanStd(shape=obs_size, epsilon=0.0)
 
     total_samples = 0
-    i = 0
-    eval_policy(env, policy, mean_std, args.eval_runs, total_samples,
+    update_num = 0
+    eval_policy(pool, policy, mean_std, args.eval_runs, total_samples,
                 start_time)
+    save_path = os.path.join("./trained_models", config_yaml_file + str(seed))
+    rewards = np.zeros((args.n_dirs, 2))
 
     while total_samples < args.n_samples:
-        old_mean_std = copy.deepcopy(mean_std)
-        deltas = np.zeros((args.n_dirs, *policy.shape))
-        rewards = np.zeros((args.n_dirs, 2))
-        for j in range(args.n_dirs):
-            # generate and evaluate perturbations
-            deltas[j] = np.random.normal(size=policy.shape)
-            rewards[j, 0], samples, _ = run_episode(
-                env,
-                old_mean_std,
-                policy - deltas[j] * args.delta_std,
-                mean_std=mean_std)
-            total_samples += samples
-            rewards[j, 1], samples, _ = run_episode(
-                env,
-                old_mean_std, policy + deltas[j] * args.delta_std,
-                mean_std=mean_std)
-            total_samples += samples
+        deltas = np.random.normal(size=(args.n_dirs, *policy.shape))
+
+        pool_output = parallel_runs(policy, args.n_dirs, deltas, mean_std,
+                                    pool, args.delta_std)
+        for j in range(len(pool_output)):
+            rewards[j // 2, j % 2] = pool_output[j][0]
+            total_samples += pool_output[j][1]
+
         policy = update_policy(policy, deltas, rewards, args.lr, args.top_dirs)
-        i += 1
-        if i % args.eval_int == 0:
-            eval_policy(env, policy, old_mean_std, args.eval_runs,
-                        total_samples, start_time)
-        if i % args.save_int == 0:
-            path = os.path.join("./trained_models",
-                                config_yaml_file + str(seed))
-            np.savez(path, policy, old_mean_std.mean, old_mean_std.var)
-    np.savez(path, policy, old_mean_std.mean, old_mean_std.var)
+
+        update_num += 1
+        if update_num % args.eval_int == 0:
+            eval_policy(pool, policy, mean_std, args.eval_runs, total_samples,
+                        start_time)
+        if update_num % args.save_int == 0 or total_samples >= args.n_samples:
+            np.savez(save_path, policy, mean_std.mean, mean_std.var)
+
+        update_mean_std(pool_output, mean_std)
+
+    pool.close()
+    pool.join()
 
 
 def main():
