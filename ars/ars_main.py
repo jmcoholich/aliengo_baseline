@@ -3,7 +3,7 @@ Implements Augmented Random Search as described in this paper:
 
 https://arxiv.org/pdf/1803.07055.pdf
 
-This is for continuous control space only
+This is for continuous control space only.
 """
 import argparse
 import time
@@ -30,7 +30,7 @@ def ars(args, config_yaml_file, seed):
     act_size = env.action_space.shape[0]
     del env
 
-    pool_size = min(mp.cpu_count() - 2, args.eval_runs, args.n_dirs)
+    pool_size = min(mp.cpu_count() - 2, max(args.eval_runs, args.n_dirs))
     pool = mp.Pool(
         processes=pool_size,
         initializer=mp_create_env,
