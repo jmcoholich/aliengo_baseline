@@ -41,7 +41,7 @@ class AliengoQuadruped:
             fixed=fixed,
             fixed_position=fixed_position,
             fixed_orientation=fixed_orientation)
-        self.print_robot_info()
+        # self.print_robot_info()
 
         # indices are in order of [shoulder, hip, knee] for FR, FL, RR, RL.
         # The skipped numbers are fixed joints in the URDF
@@ -1371,7 +1371,7 @@ def test_trajectory_generator():
         params = yaml.full_load(f)
     params = params['env_params']
     params['render'] = True
-    params['fixed'] = True
+    params['fixed'] = False
     params['fixed_position'] = [0.0, 0.0, 1.5]
     env = AliengoEnv(**params)
     env.reset()
@@ -1420,8 +1420,8 @@ def check_foot_position_reach():
 if __name__ == '__main__':
     # axes_shift_function_test()
     # check_foot_position_reach()
-    # test_trajectory_generator()
-    sine_tracking_test()
+    test_trajectory_generator()
+    # sine_tracking_test()
     # floor_tracking_test()
 
 
