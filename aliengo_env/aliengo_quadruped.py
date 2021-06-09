@@ -673,7 +673,7 @@ class AliengoQuadruped:
             temp = self.client.calculateInverseKinematics(
                 self.quadruped,
                 self.foot_links[i],
-                targetPosition=commanded_global_foot_positions[i],
+                targetPosition=foot_center_positions[i],
                 # maxNumIterations=1000,
                 # residualThreshold=1e-10))
             )
