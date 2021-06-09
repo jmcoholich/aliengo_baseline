@@ -33,23 +33,23 @@ class AliengoQuadruped:
         self.n_motors = 12
 
         # FR, FL, RR, RL
-        self.foot_links = [5, 9, 13, 17]
-        self.shin_links = [4, 8, 12, 16]
-        self.thigh_links = [3, 7, 11, 15]
-        self.hip_links = [2, 6, 10, 14]
+        self.hip_links = [0, 4, 8, 12]
+        self.thigh_links = [1, 5, 9, 13]
+        self.shin_links = [2, 6, 10, 14]
+        self.foot_links = [3, 7, 11, 15]
         self.quadruped = self.load_urdf(
             fixed=fixed,
             fixed_position=fixed_position,
             fixed_orientation=fixed_orientation)
+        self.print_robot_info()
 
         # indices are in order of [shoulder, hip, knee] for FR, FL, RR, RL.
         # The skipped numbers are fixed joints in the URDF
-        self.motor_joint_indices = [2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16]
-        self.hip_joints = [2, 6, 10, 14]
-        self.thigh_joints = [3, 7, 11, 15]
-        self.knee_joints = [4, 8, 12, 16]
-        # 19 links if the "base" link is included (massless, 0.001 cube)
-        self.num_links = 18
+        self.motor_joint_indices = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
+        self.hip_joints = [0, 4, 8, 12]
+        self.thigh_joints = [1, 5, 9, 13]
+        self.knee_joints = [2, 6, 10, 14]
+        self.num_links = 16
         (self.positions_lb,
             self.positions_ub,
             self.position_mean,
@@ -113,6 +113,28 @@ class AliengoQuadruped:
                                                         vis=self.vis)
 
         self.max_joint_vel = np.ones(self.n_motors) * 40.0  # from URDF
+
+    def print_robot_info(self):
+        for i in range(self.client.getNumJoints(self.quadruped)):
+            info = self.client.getJointInfo(self.quadruped, i)
+            print("Joint {}: {}".format(i, info[1]))
+        print()
+        print()
+
+        print("Base")
+        info = self.client.getDynamicsInfo(self.quadruped, -1)
+        print("Mass: {}".format(info[0]))
+        print("Inertia Diagonal: {}".format(info[2]))
+        print()
+
+
+        for i in range(self.client.getNumJoints(self.quadruped)):
+            info = self.client.getDynamicsInfo(self.quadruped, i)
+            print("Name: "
+                  + str(self.client.getJointInfo(self.quadruped, i)[12]))
+            print("Mass: {}".format(info[0]))
+            print("Inertia Diagonal: {}".format(info[2]))
+            print()
 
     def init_vis(self):
         small_ball = self.client.createVisualShape(
@@ -924,8 +946,6 @@ class AliengoQuadruped:
                                              flags=urdfFlags,
                                              useFixedBase=False)
 
-        self.foot_links = [5, 9, 13, 17]
-
         for i in range (self.client.getNumJoints(quadruped)):
             self.client.changeDynamics(quadruped, i, linearDamping=0, angularDamping=.5)
 
@@ -1403,7 +1423,6 @@ if __name__ == '__main__':
     # test_trajectory_generator()
     sine_tracking_test()
     # floor_tracking_test()
-
 
 
 
