@@ -907,7 +907,7 @@ class AliengoQuadruped:
 
     def load_urdf(self, fixed=False, fixed_position=[0, 0, 1.0],
                   fixed_orientation=[0, 0, 0]):
-        urdfFlags = p.URDF_USE_SELF_COLLISION
+        urdfFlags = p.URDF_USE_SELF_COLLISION + p.URDF_USE_INERTIA_FROM_FILE
         path = str(os.path.dirname(__file__)) + '/urdf/aliengo.urdf'
         quats = self.client.getQuaternionFromEuler(fixed_orientation)
         if fixed:
