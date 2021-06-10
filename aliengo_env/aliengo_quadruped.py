@@ -41,7 +41,7 @@ class AliengoQuadruped:
             fixed=fixed,
             fixed_position=fixed_position,
             fixed_orientation=fixed_orientation)
-        # self.print_robot_info()
+        self.print_robot_info()
 
         # indices are in order of [shoulder, hip, knee] for FR, FL, RR, RL.
         # The skipped numbers are fixed joints in the URDF
@@ -115,6 +115,8 @@ class AliengoQuadruped:
         self.max_joint_vel = np.ones(self.n_motors) * 40.0  # from URDF
 
     def print_robot_info(self):
+
+
         for i in range(self.client.getNumJoints(self.quadruped)):
             info = self.client.getJointInfo(self.quadruped, i)
             print("Joint {}: {}".format(i, info[1]))
@@ -122,6 +124,16 @@ class AliengoQuadruped:
         print()
 
         print("Base")
+        info = self.client.getDynamicsInfo(self.quadruped, -1)
+        print("Mass: {}".format(info[0]))
+        print("Inertia Diagonal: {}".format(info[2]))
+        print()
+
+        print("Base MODIFIED")
+        new_inertia = list(info[2])
+        new_inertia[0] *= 10
+        self.client.changeDynamics(self.quadruped, -1,
+                                   localInertiaDiagonal=new_inertia)
         info = self.client.getDynamicsInfo(self.quadruped, -1)
         print("Mass: {}".format(info[0]))
         print("Inertia Diagonal: {}".format(info[2]))

@@ -3,7 +3,7 @@ wandb_project: footstep
 
 # existing args from pytorch_a2c_ppo_acktr_gail, defaults changed
 algo: ppo
-hidden_size: 256
+hidden_size: 512
 output_tanh: True
 gail: False # do imitation learning with  gail
 gail_experts_dir: ./gail_experts #directory that contains expert demonstrations for gail
@@ -15,7 +15,7 @@ alpha: 0.99 # RMSprop optimizer apha (default: 0.99)
 gamma: 0.99
 use_gae: True
 gae_lambda: 0.95
-entropy_coef: 0.00
+entropy_coef: 0.05
 value_loss_coef: 0.5
 max_grad_norm: 0.5
 cuda_deterministic: False
