@@ -40,6 +40,7 @@ class Observation():
 
             'noise': (self.get_noise, 1),
             'constant_zero': (self.get_zero, 1),
+            'constant_one': (self.get_one, 1),
             'one_joint_only': (self.get_one_joint_only, 1),
 
             'start_token': (self.get_start_token, 1),
@@ -168,3 +169,6 @@ class Observation():
 
     def get_foot_contact_state(self):
         return self.quadruped.get_foot_contact_states()
+
+    def get_one(self):
+        return np.ones(1)
