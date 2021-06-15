@@ -38,6 +38,7 @@ env_params:
     - previous_action
     - start_token
     - constant_one
+    - foot_contact_states
     # - trajectory_generator_individual_leg_phases
     # - base_linear_acceleration #TODO
 
