@@ -366,10 +366,6 @@ class AliengoQuadruped:
     #             + 2.0 * wide_step_rew # 0.1 * knee_force_ratio_rew #+ 0.001 * knee_force_rew
     #     return total_rew, rew_dict
 
-    # def pmtg_action(self, time, action):
-    #     self.set_trajectory_parameters(time, action[0], action[1],
-    #                                    action[2], action[3], action[4],
-    #                                    action[5], action[6:])
 
     # def get_privileged_info(self, fake_client=None, flat_ground=False, ray_start=100):
     #     '''
@@ -533,9 +529,14 @@ class AliengoQuadruped:
                                   - params['frequency_bounds']['lb']) * 0.5
                      + (params['frequency_bounds']['lb']
                         + params['frequency_bounds']['ub']) * 0.5)
-        true_residuals = (action[3:] * (params['residual_bounds']['ub']
-                                        - params['residual_bounds']['lb'])
-                          * 0.5 * self.position_range * 0.5)
+        if 'residuals' is params and params['residuals'] == 'foot':
+            true_residuals = (action[3:] * (params['residual_bounds']['ub']
+                                            - params['residual_bounds']['lb'])
+                            * 0.5 * self.position_range * 0.5)
+        else:
+            true_residuals = (action[3:] * (params['residual_bounds']['ub']
+                                            - params['residual_bounds']['lb'])
+                            * 0.5 * self.position_range * 0.5)
         return amplitude, walking_height, frequency, true_residuals
 
     # def get_pmtg_action_bounds(self):
