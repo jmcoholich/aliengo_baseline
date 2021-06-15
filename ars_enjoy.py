@@ -31,9 +31,13 @@ if args.ws != -1:
              '143.215.184.72',
              '143.215.128.16',
              '143.215.131.25',
-             '143.215.131.23']
+             '143.215.131.23',
+             '130.207.124.148']  # last one is sky1.cc.gatech.edu
     print('\n\nOpening Remote SSH Client...\n\n')
-    ssh_client.connect(ws_ip[args.ws - 1], 22, 'jcoholich')
+    if args.ws <= 6:
+        ssh_client.connect(ws_ip[args.ws - 1], 22, 'jcoholich')
+    else:
+        ssh_client.connect(ws_ip[args.ws - 1], 22, 'jcoholich3')
     print('Connected!\n\n')
     # ssh_client.exec_command('cd hutter_kostrikov; cd trained_models')
     sftp_client = ssh_client.open_sftp()

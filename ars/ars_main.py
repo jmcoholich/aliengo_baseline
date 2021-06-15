@@ -46,6 +46,8 @@ def ars(args, config_yaml_file, seed, max_processes):
     eval_policy(pool, policy, mean_std, args.eval_runs, total_samples,
                 start_time)
     save_path = os.path.join("./trained_models", config_yaml_file + str(seed))
+    if not os.path.isdir("./trained_models"):
+        os.mkdir("./trained_models")
     rewards = np.zeros((args.n_dirs, 2))
 
     while total_samples < args.n_samples:
