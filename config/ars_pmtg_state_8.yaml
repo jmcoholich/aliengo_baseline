@@ -64,7 +64,7 @@ env_params:
       lateral_offset: 0.075
       residuals: foot  # should either be "foot" or "joint". Default is "joint" for backwards compatability
       joint_residual_bound: 0.15  # bounds will be +/- these values * range of joint angles
-      foot_residual_bound: [0.05, 0.05, 0.05]  # bounds will be +/- these values, in meters
+      foot_residual_bound: [0.075, 0.075, 0.03]  # bounds will be +/- these values, in meters
 
 
   reward_parts: #TODO
