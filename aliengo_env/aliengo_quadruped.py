@@ -464,7 +464,7 @@ class AliengoQuadruped:
         return self.link_masses
 
     def trajectory_generator(self, time, amplitude, walking_height,
-                             frequency, params):
+                             frequency, params, residuals):
         # TODO eventually make trajectory generator its own object in a
         # separate file
         assert time >= 0.0
@@ -486,6 +486,8 @@ class AliengoQuadruped:
         foot_positions[[0, 2], 1] -= params['lateral_offset']
         foot_positions[[1, 3], 1] += params['lateral_offset']
         foot_positions[:, 0] += params['x_offset']
+        if params['residuals'] == 'foot':
+            foot_positions += residuals.reshape((4, 3))
         joint_targets = self.set_foot_positions(foot_positions,
                                                 return_joint_targets=True)
         return joint_targets
@@ -498,8 +500,10 @@ class AliengoQuadruped:
         (amplitude, walking_height, frequency,
             true_residuals) = self._unpack_iscen_pmtg_args(action, params)
         true_joint_positions = self.trajectory_generator(
-            time, amplitude, walking_height, frequency, params)
-        self.set_joint_position_targets(true_joint_positions + true_residuals,
+            time, amplitude, walking_height, frequency, params, true_residuals)
+        if params['residuals'] == 'joint':
+            true_joint_positions += true_residuals
+        self.set_joint_position_targets(true_joint_positions,
                                         true_positions=True)
 
     def _unpack_iscen_pmtg_args(self, action, params):
@@ -513,8 +517,6 @@ class AliengoQuadruped:
                 >= params['walking_height_bounds']['lb'])
         assert (params['frequency_bounds']['ub']
                 >= params['frequency_bounds']['lb'])
-        assert (params['residual_bounds']['ub']
-                >= params['residual_bounds']['lb'])
 
         amplitude = (action[0] * (params['amplitude_bounds']['ub']
                                   - params['amplitude_bounds']['lb']) * 0.5
@@ -529,14 +531,14 @@ class AliengoQuadruped:
                                   - params['frequency_bounds']['lb']) * 0.5
                      + (params['frequency_bounds']['lb']
                         + params['frequency_bounds']['ub']) * 0.5)
-        if 'residuals' is params and params['residuals'] == 'foot':
-            true_residuals = (action[3:] * (params['residual_bounds']['ub']
-                                            - params['residual_bounds']['lb'])
-                            * 0.5 * self.position_range * 0.5)
+        if params['residuals'] == 'foot':
+            bound = np.tile(np.array(params['foot_residual_bound']), 4)
+            true_residuals = action[3:] * bound
+        elif params['residuals'] == 'joint':
+            true_residuals = (action[3:] * params['joint_residual_bound']
+                              * self.position_range * 0.5)
         else:
-            true_residuals = (action[3:] * (params['residual_bounds']['ub']
-                                            - params['residual_bounds']['lb'])
-                            * 0.5 * self.position_range * 0.5)
+            raise ValueError
         return amplitude, walking_height, frequency, true_residuals
 
     # def get_pmtg_action_bounds(self):
@@ -992,7 +994,6 @@ class AliengoQuadruped:
 
         # self.true_joint_position_target_history.pop()
         # self.true_joint_position_target_history.insert(0, positions)
-
 
     def positions_to_actions(self, positions):
         """Maps actual robot joint positions in radians

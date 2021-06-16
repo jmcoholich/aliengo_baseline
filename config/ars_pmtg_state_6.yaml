@@ -29,7 +29,8 @@ env_params:
     # - joint_torques
     # - joint_positions
     # - joint_velocities
-    -
+    - robo_frame_foot_position
+    - robo_frame_foot_velocity
     - base_angular_velocity
     - base_velocity
     - base_orientation
@@ -58,14 +59,12 @@ env_params:
       frequency_bounds:
         lb: 0.0
         ub: 1.75
-      residual_bounds:
-        lb: -0.15
-        ub: 0.15
       step_height: 0.1
       x_offset: 0.02109375
       lateral_offset: 0.075
       residuals: foot  # should either be "foot" or "joint". Default is "joint" for backwards compatability
-      foot_residual_bounds: [0.05, 0.05, 0.05]  # bounds will be +/- these values
+      joint_residual_bound: 0.15  # bounds will be +/- these values * range of joint angles
+      foot_residual_bound: [0.025, 0.025, 0.025]  # bounds will be +/- these values, in meters
 
 
   reward_parts: #TODO
