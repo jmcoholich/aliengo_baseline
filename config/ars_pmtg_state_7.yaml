@@ -1,0 +1,82 @@
+# Added args
+wandb_project: ARS_PMTG
+
+algo: ars
+lr: 0.0015
+n_dirs: 200
+top_dirs: 100
+delta_std: 0.025
+top_dirs_frac: null
+eval_int: 10
+eval_runs: 1
+save_int: 100
+env_name: aliengo
+n_samples: 100_000_000
+
+
+env_params:
+  stochastic_resets: True
+  obstacles: null
+  render: False
+  apply_perturb: False
+  avg_time_per_perturb: 5.0 # seconds
+  action_repeat: 4
+  vis: False
+  max_torque: 44.4 # from URDF
+  kp: 1.0
+  kd: 1.0
+  observation_parts: #TODO enumerate all possible types that I can even put here. Also add terrain heightmaps
+    # - joint_torques
+    # - joint_positions
+    # - joint_velocities
+    - robo_frame_foot_position
+    - robo_frame_foot_velocity
+    - base_angular_velocity
+    - base_velocity
+    - base_orientation
+    - base_position
+    - trajectory_generator_phase
+    - previous_observation
+    - previous_action
+    - start_token
+    - constant_one
+    - foot_contact_states
+    # - trajectory_generator_individual_leg_phases
+    # - base_linear_acceleration #TODO
+
+  action_space:
+    # joint_positions: #TODO implement the bounds and other action spaces.
+    #   lb: null
+    #   ub: null
+    Iscen_PMTG: # This pmtg is the original one from "Policies Modulating Trajectory Generators"
+      gait: trot # allowed: trot, walk
+      amplitude_bounds:
+        lb: 0.0
+        ub: 0.10
+      walking_height_bounds: # this is just negative step_bottom
+        lb: 0.35
+        ub: 0.55
+      frequency_bounds:
+        lb: 0.0
+        ub: 1.75
+      step_height: 0.1
+      x_offset: 0.02109375
+      lateral_offset: 0.075
+      residuals: foot  # should either be "foot" or "joint". Default is "joint" for backwards compatability
+      joint_residual_bound: 0.15  # bounds will be +/- these values * range of joint angles
+      foot_residual_bound: [0.05, 0.05, 0.05]  # bounds will be +/- these values, in meters
+
+
+  reward_parts: #TODO
+    # reward_type: coefficient
+    # note: the reward bounds are on the measured value of the thing, not on the reward term
+    forward_velocity: [1.0, -0.5, 0.5] #coeffient, lower bound, upper bound
+    joint_torques_sq: [-0.000005]
+    smoothness_sq: [0.1]
+    orientation: [0.5, -0.15, -0.1, -0.02]
+    lift_feet: [1.0, 0.05] # reward gives +1.0 for each foot that lifts during phase. [coeff, lift_height]
+
+  termination_conditions: #obstacles and foostep_param will automatically include their own termination conditions (ie traveling outside of generated terrain)
+    height_bounds: [0.23, 0.8] # [lb, ub] this will automatically be turned off if obstacles are included
+    orientation_bounds: [0.5, 0.25, 0.25] # multiples of pi
+    timeout: [10] # seconds
