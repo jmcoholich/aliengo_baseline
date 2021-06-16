@@ -1368,12 +1368,12 @@ def test_trajectory_generator():
     torch.manual_seed(0)
 
     path = os.path.join(os.path.dirname(__file__),
-                        '../config/ars_pmtg_state.yaml')
+                        '../config/ars_pmtg_state_7.yaml')
     with open(path) as f:
         params = yaml.full_load(f)
     params = params['env_params']
     params['render'] = True
-    params['fixed'] = False
+    params['fixed'] = True
     params['fixed_position'] = [0.0, 0.0, 1.5]
     env = AliengoEnv(**params)
     env.reset()
@@ -1381,10 +1381,10 @@ def test_trajectory_generator():
         frequency, plus 12 joint positions residuals,
         all in the range of [-1, 1]
         """
-    amplitude = np.array([-1.0])
+    amplitude = np.array([0.0])
     walking_height = np.array([0.0])
-    frequency = np.array([1.0])
-    residuals = np.zeros(12)
+    frequency = np.array([-1.0])
+    residuals = np.tile(np.array([-1.0, 0, 0.0]), 4)
     action = np.concatenate((amplitude, walking_height, frequency, residuals))
     # for _ in range(100):
     #     env.client.stepSimulation()
@@ -1392,8 +1392,8 @@ def test_trajectory_generator():
     while True:
         time.sleep(1/240. * env.action_repeat)
         env.step(action)
-        if action[0] < 1.00:
-            action[0] += 0.01
+        # if action[0] < 1.00:
+        #     action[0] += 0.01
 
 
 def check_foot_position_reach():
