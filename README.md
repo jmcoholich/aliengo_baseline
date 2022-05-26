@@ -1,6 +1,6 @@
 # Aliengo Baseline
 
-This is a codebase for trianing locomotion policies on the [Unitree Aliengo](https://www.unitree.com/products/aliengo/)
+This is a codebase for trianing locomotion policies for the [Unitree Aliengo](https://www.unitree.com/products/aliengo/)
 robot with [PyBullet](https://pybullet.org/wordpress/). As I have found, it is very difficult
 to replicate reinforcement learning results for legged locomotion from scratch. Most
 of the polices end up looking something like this:
