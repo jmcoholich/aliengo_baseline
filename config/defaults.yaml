@@ -38,6 +38,7 @@ use_proper_time_limits: True
 recurrent_policy: False
 use_linear_lr_decay: False
 num_torch_threads: null # null just means don't set anything.
+output_tanh: False
 
 env_params:
   stochastic_resets: True

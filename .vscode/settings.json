@@ -1,5 +1,0 @@
-{
-    "python.pythonPath": "/home/jeremiah/anaconda3/envs/aliengo_baseline/bin/python",
-    "python.linting.enabled": true,
-    // "cornflakes.linter.executablePath": "/home/jeremiah/anaconda3/envs/aliengo_baseline/bin/flake8"
-}

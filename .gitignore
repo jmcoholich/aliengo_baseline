@@ -2,7 +2,7 @@
 *.avi
 wandb/
 trained_models/
-
+.vscode/
 
 
 # Byte-compiled / optimized / DLL files
