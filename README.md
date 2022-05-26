@@ -7,7 +7,7 @@ of the polices end up looking something like this:
 
 <img src="videos/aliengo/output.gif" alt="drawing" width="400"/>
 
-I later abandoned this pipeline in favor of using [NVIDIA's IsaacGym](https://developer.nvidia.com/isaac-gym).
+I abandoned this pipeline in favor of using [NVIDIA's IsaacGym](https://developer.nvidia.com/isaac-gym).
 
 
 This repo contains [this](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) PPO implementation and my own implementation of [Augmented Random Search](https://arxiv.org/abs/1803.07055).
